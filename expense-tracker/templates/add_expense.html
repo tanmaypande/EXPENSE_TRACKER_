@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Expense</title>
+    <style>
+        :root {
+            --bg-black: #0b0b0b;
+            --card-black: #1a1a1a;
+            --primary-green: #2ecc71;
+            --hover-green: #27ae60;
+            --text-white: #e0e0e0;
+            --text-gray: #a0a0a0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--card-black);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #333;
+        }
+
+        h2 {
+            color: var(--primary-green);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: #252525;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box; /* Ensures padding doesn't break width */
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-green--);
+            border: none;
+            border-radius: 8px;
+            color: var(--bg-black);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--hover-green);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .back-link:hover {
+            color: var(--primary-green);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Add New Expense</h2>
+    
+<form action="/add" method="POST">
+    <label>Date:</label><br>
+    <input type="date" name="date" required><br><br>
+
+    <label>Category:</label><br>
+    <input type="text" name="category" required><br><br>
+
+    <label>Amount:</label><br>
+    <input type="number" step="0.01" name="amount" required><br><br>
+
+    <label>Description:</label><br>
+    <input type="text" name="description"><br><br>
+
+    <button type="submit">Add Expense</button>
+</form>
+    <a href="{{ url_for('add_expense_page') }}">ṇ
+</div>
+
+</body>
+</html>
