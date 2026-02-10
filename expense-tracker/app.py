@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "expense.db")
 
 def get_db_connection():
-    print("👉 USING DATABASE:", DB_PATH)
+    print(" USING DATABASE:", DB_PATH)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -41,7 +41,7 @@ def login():
         else:
             return "Invalid email or password"
 
-    return render_template("login.html")  # or login.html if separate
+    return render_template("login.html")  
 
 
 
@@ -89,7 +89,7 @@ def dashboard():
         (session["user_id"],)
     ).fetchone()[0] or 0
 
-    income = 0  # temporary (until income feature added)
+    income = 0  
 
     conn.close()
 
@@ -102,7 +102,6 @@ def dashboard():
 
 
 # ---------------- ADD EXPENSE ----------------
-# ---------------- SHOW ADD EXPENSE PAGE ----------------
 @app.route("/add", methods=["GET"])
 def add_expense_page():
     if "user_id" not in session:
