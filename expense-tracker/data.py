@@ -1,6 +1,6 @@
 import sqlite3
 
-# Connect to database (creates expense.db if not exists)
+# Connect to database 
 connection = sqlite3.connect("expense.db")
 cursor = connection.cursor()
 
