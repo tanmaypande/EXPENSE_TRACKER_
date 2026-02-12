@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseTracker | Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+
+</head>
+
+<body>
+
+    <div class="decoration">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+
+        <div class="coin coin-1">
+            <div class="coin-face">$</div>
+        </div>
+
+        <div class="coin coin-2">
+            <div class="coin-face">$</div>
+        </div>
+
+        <div class="card-graphic">
+            <div class="card-chip"></div>
+            <div class="card-number">**** **** **** 3492</div>
+        </div>
+    </div>
+
+
+
+        <div class="form-container sign-in-container">
+            <form action="/login" method="POST">
+                <h1>Welcome Back</h1>
+                <div class="social-container">
+                    <a href="#" class="social"><ion-icon name="logo-google"></ion-icon></a>
+                    <a href="#" class="social"><ion-icon name="logo-apple"></ion-icon></a>
+                </div>
+                <span>or use your account</span>
+                <input type="email" name="email" placeholder="Email" required />
+                <input type="password" name="password" placeholder="Password" required />
+                <a href="#">Forgot your password?</a>
+                <button>Log In</button>
+            </form>
+        </div>
+
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Track Your Wealth!</h1>
+                    <p>Keep your expenses in check and watch your savings grow.</p>
+                    <button class="ghost" id="signIn">Log In</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Hello, Spender!</h1>
+                    <p>Enter your details and start your journey to financial freedom.</p>
+                    <a href="{{ url_for('signup') }}"><button class="ghost">SIGN UP</button>
+</a>
+                </div>
+            </div>
+        </div>
+
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+
+</body>
+
+</html>
