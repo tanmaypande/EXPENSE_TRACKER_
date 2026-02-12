@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Expense Tracker Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styligss.css') }}">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+  <div class="dashboard">
+    <h1>Expense Tracker</h1>
+
+    <div class="carin">
+
+      <!-- Summary Cards -->
+      <div class="cards">
+        <div>
+          <h3>Total Income</h3>
+          <p>₹{{ income }}</p>
+        </div>
+        <div>
+          <h3>Total Expense</h3>
+          <p>₹{{ total }}</p>
+        </div>
+        <div>
+          <h3>Balance</h3>
+          <p>₹{{ income - total }}</p>
+        </div>
+      </div>
+      <div class="rec">
+        
+        <a href="{{ url_for('add_expense') }}"><button class="addrec">ADD RECORDS</button></a>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts">
+      <div class="chart-box">
+        <h3>MONTHLY LIMIT</h3>
+        <div class="limit">
+
+          <input type="text" class="innercircle" placeholder=" Enter your monthly limit  " >
+          <button style="background-color: rgb(0, 255, 102); border-radius:20%; height:40px; width:50px; ">SET</button>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>Monthly Trend</h3>
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="table-box">
+      <h3>Recent Transactions</h3>
+      <table>
+        <tbody>
+        {% for exp in expenses %}
+        <tr>
+          <td>{{ exp.date }}</td>
+          <td>{{ exp.category }}</td>
+          <td>₹{{ exp.amount }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+</html>
