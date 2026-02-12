@@ -18,10 +18,6 @@ def get_db_connection():
     return conn
 
 # ---------------- LOGIN ----------------
-@app.route("/")
-def home():
-    return redirect("/login")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -45,6 +41,9 @@ def login():
 
 
 # ---------------- SIGNUP ----------------
+@app.route("/")
+def home():
+    return redirect("/signup")
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     print("👉 SIGNUP ROUTE HIT")
