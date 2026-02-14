@@ -100,6 +100,13 @@
         .back-link:hover {
             color: var(--primary-green);
         }
+        .grn-btn{
+            background-color: var(--primary-green);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -120,9 +127,8 @@
     <label>Description:</label><br>
     <input type="text" name="description"><br><br>
 
-    <button type="submit">Add Expense</button>
+    <button type="submit" class="grn-btn">Add Expense</button>
 </form>
-    <a href="{{ url_for('add_expense_page') }}">ṇ
 </div>
 
 </body>
