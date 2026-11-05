@@ -215,13 +215,18 @@ def get_pnl_report(business_id, start_date=None, end_date=None):
     return {
         "gross_sales": gross_sales,
         "total_tax": total_tax,
+        "tax_collected": total_tax,
         "net_sales": net_sales,
+        "operating_revenue": net_sales,
+        "returns_total": 0.0,
         "cogs": total_cogs,
         "gross_profit": gross_profit,
         "gross_margin_pct": gross_margin_pct,
         "operating_expenses": operating_expenses,
+        "total_expenses": operating_expenses,
         "net_profit": net_profit,
         "net_margin_pct": net_margin_pct,
+        "total_invoices": len(exp_cats),
         "expense_categories": [dict(c) for c in exp_cats]
     }
 
@@ -249,4 +254,8 @@ def get_gst_summary(business_id, start_date=None, end_date=None):
 
     row = conn.execute(query, params).fetchone()
     conn.close()
-    return dict(row)
+    d = dict(row)
+    d["cgst"] = d.get("total_cgst", 0.0)
+    d["sgst"] = d.get("total_sgst", 0.0)
+    d["total_tax"] = d.get("total_gst", 0.0)
+    return d
