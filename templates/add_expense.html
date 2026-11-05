@@ -3,39 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Record Transaction | VaultFlow Fintech</title>
+  <title>New Transaction - Expense Tracker</title>
   
-  <!-- Fonts -->
+  <!-- Prevent Theme Flash -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+    })();
+  </script>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Premium Fintech Design System -->
+  <!-- Stylesheet -->
   <link rel="stylesheet" href="{{ url_for('static', filename='fintech.css') }}">
 </head>
 <body class="auth-page">
 
-  <!-- Ambient Light Orbs -->
-  <div class="auth-glow-1"></div>
-  <div class="auth-glow-2"></div>
+  <div class="auth-nav-top">
+    <button class="theme-toggle-btn" title="Toggle theme">
+      <i data-lucide="sun" style="width: 17px; height: 17px;"></i>
+    </button>
+  </div>
 
-  <!-- Card Container -->
-  <div class="auth-card" style="max-width: 520px; padding: 36px 32px;">
+  <div class="auth-card" style="max-width: 480px;">
     
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-      <a href="{{ url_for('dashboard') }}" class="btn-secondary" style="padding: 6px 12px;">
-        <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
-        <span>Return to Dashboard</span>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+      <a href="{{ url_for('dashboard') }}" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        <span>Back to dashboard</span>
       </a>
-      <span class="brand-badge">Vault Entry</span>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">New entry</span>
     </div>
 
-    <div class="auth-brand" style="margin-bottom: 24px; text-align: left; align-items: flex-start;">
-      <h1 class="auth-title" style="font-size: 1.35rem;">Record New Transaction</h1>
-      <p class="auth-subtitle">Log cash inflow or outflow directly into your verified ledger</p>
+    <div style="margin-bottom: 20px;">
+      <h1 class="auth-title" style="font-size: 1.25rem;">Add Transaction</h1>
+      <p class="auth-subtitle">Record an expense or income entry</p>
     </div>
 
     <form action="{{ url_for('add_expense') }}" method="POST" class="auth-form" id="page-add-form">
@@ -43,19 +53,19 @@
       <!-- Type Switcher -->
       <div class="segmented-control" id="page-type-selector">
         <button type="button" class="segment-btn {{ 'active expense' if initial_type != 'income' else 'expense' }}" data-type="expense">
-          <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
-          Expense Outflow
+          <i data-lucide="arrow-up-right" style="width: 15px; height: 15px;"></i>
+          Expense
         </button>
         <button type="button" class="segment-btn {{ 'active income' if initial_type == 'income' else 'income' }}" data-type="income">
-          <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
-          Income Inflow
+          <i data-lucide="arrow-down-left" style="width: 15px; height: 15px;"></i>
+          Income
         </button>
       </div>
       <input type="hidden" name="type" id="page-hidden-type" value="{{ initial_type if initial_type in ['expense', 'income'] else 'expense' }}">
 
       <!-- Amount -->
       <div class="form-group">
-        <label class="form-label">Transaction Amount (₹)</label>
+        <label class="form-label">Amount (₹)</label>
         <div class="input-with-affix">
           <span class="input-affix">₹</span>
           <input type="number" step="0.01" min="0.01" name="amount" class="form-input-lg" placeholder="0.00" required autofocus>
@@ -70,51 +80,44 @@
         </div>
         <div class="form-group">
           <label class="form-label">Category</label>
-          <input type="text" name="category" id="page-category-input" class="form-input" placeholder="e.g. Dining, Salary" required>
+          <input type="text" name="category" id="page-category-input" class="form-input" placeholder="e.g. Groceries" required>
         </div>
       </div>
 
       <!-- Quick Category Suggestions -->
       <div class="form-group">
-        <label class="form-label" style="font-size: 0.7rem; color: var(--text-muted);">Quick Suggestions</label>
+        <label class="form-label" style="font-size: 0.72rem;">Quick Categories</label>
         <div class="category-quick-pills" id="page-quick-pills">
-          <span class="quick-pill" data-category="Food & Dining">🍔 Food</span>
-          <span class="quick-pill" data-category="Groceries">🛒 Groceries</span>
-          <span class="quick-pill" data-category="Salary">💼 Salary</span>
-          <span class="quick-pill" data-category="Bills & Utilities">⚡ Utilities</span>
-          <span class="quick-pill" data-category="Transport">🚗 Transport</span>
-          <span class="quick-pill" data-category="Shopping">🛍️ Shopping</span>
+          <span class="quick-pill" data-category="Food & Dining">Food</span>
+          <span class="quick-pill" data-category="Groceries">Groceries</span>
+          <span class="quick-pill" data-category="Salary">Salary</span>
+          <span class="quick-pill" data-category="Bills & Utilities">Utilities</span>
+          <span class="quick-pill" data-category="Transport">Transport</span>
+          <span class="quick-pill" data-category="Shopping">Shopping</span>
         </div>
       </div>
 
       <!-- Description -->
       <div class="form-group">
-        <label class="form-label">Description / Merchant Notes</label>
-        <input type="text" name="description" class="form-input" placeholder="Optional details (e.g. Monthly rent, Client bonus)">
+        <label class="form-label">Description (Optional)</label>
+        <input type="text" name="description" class="form-input" placeholder="e.g. Weekly grocery run">
       </div>
 
       <!-- Submit Button -->
-      <button type="submit" class="btn-primary-glow" style="width: 100%; height: 46px; justify-content: center; margin-top: 10px;">
-        <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
-        <span>Commit Transaction</span>
+      <button type="submit" class="btn-primary" style="width: 100%; height: 40px; justify-content: center; margin-top: 6px;">
+        <span>Save Transaction</span>
       </button>
 
     </form>
-
   </div>
 
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
   <script>
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
-
-    // Default to today's date
     const dateInput = document.getElementById("page-date-input");
     if (dateInput && !dateInput.value) {
       dateInput.value = new Date().toISOString().split("T")[0];
     }
 
-    // Type Selector
     const typeButtons = document.querySelectorAll("#page-type-selector .segment-btn");
     const hiddenTypeInput = document.getElementById("page-hidden-type");
 
@@ -129,7 +132,6 @@
       });
     });
 
-    // Quick Category Pills
     const pills = document.querySelectorAll("#page-quick-pills .quick-pill");
     const catInput = document.getElementById("page-category-input");
 

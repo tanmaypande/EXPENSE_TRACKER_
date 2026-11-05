@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory & Products - {{ business.name }} | ShopLedger{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Product Catalog & Inventory</h2>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Manage SKU, pricing, stock levels and categories</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <a href="{{ url_for('inventory.stock_history') }}" class="btn-secondary">
+        <i data-lucide="history" style="width: 15px; height: 15px;"></i>
+        <span>Stock Audit Log</span>
+      </a>
+      <a href="{{ url_for('inventory.add_product') }}" class="btn-primary" style="background: var(--accent-green);">
+        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        <span>Add Product</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <form method="GET" action="{{ url_for('inventory.list_products') }}" style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1;">
+      <div style="position: relative; width: 260px;">
+        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-faint);"></i>
+        <input type="text" name="search" class="form-input" style="padding-left: 32px; height: 36px;" value="{{ search }}" placeholder="Search by name, SKU, or barcode...">
+      </div>
+
+      <select name="category_id" class="filter-select" style="height: 36px;" onchange="this.form.submit()">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+          <option value="{{ c.id }}" {% if selected_category == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-main); cursor: pointer;">
+        <input type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %} onchange="this.form.submit()">
+        <span>Low Stock Only</span>
+      </label>
+
+      <button type="submit" class="btn-secondary" style="height: 36px;">Filter</button>
+      {% if search or selected_category or low_stock %}
+        <a href="{{ url_for('inventory.list_products') }}" class="btn-secondary" style="height: 36px;">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Products Table -->
+  <div class="transactions-section">
+    <div class="table-responsive">
+      <table class="fintech-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>SKU / Barcode</th>
+            <th>Category</th>
+            <th style="text-align: right;">Cost Price</th>
+            <th style="text-align: right;">Selling Price</th>
+            <th>GST %</th>
+            <th style="text-align: center;">Stock</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if products and products|length > 0 %}
+            {% for p in products %}
+              <tr>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-main);">{{ p.name }}</div>
+                  {% if p.brand %}
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">{{ p.brand }}</span>
+                  {% endif %}
+                </td>
+                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-muted);">
+                  {{ p.sku or '-' }}
+                  {% if p.barcode %}
+                    <span style="display: block; font-size: 0.7rem; color: var(--text-faint);">BC: {{ p.barcode }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="category-pill">{{ p.category_name or 'Uncategorized' }}</span>
+                </td>
+                <td style="text-align: right; color: var(--text-muted);">
+                  {{ business.currency }}{{ "{:,.2f}".format(p.purchase_price) }}
+                </td>
+                <td style="text-align: right; font-weight: 700; color: var(--text-main);">
+                  {{ business.currency }}{{ "{:,.2f}".format(p.selling_price) }}
+                </td>
+                <td>{{ p.tax_rate }}%</td>
+                <td style="text-align: center; font-weight: 700;">
+                  <span style="color: {{ 'var(--accent-red-text)' if p.stock_quantity <= p.min_stock_level else 'var(--text-main)' }};">
+                    {{ p.stock_quantity }} {{ p.unit }}
+                  </span>
+                </td>
+                <td>
+                  {% if p.stock_quantity <= 0 %}
+                    <span class="badge-status badge-unpaid">Out of Stock</span>
+                  {% elif p.stock_quantity <= p.min_stock_level %}
+                    <span class="badge-status badge-low-stock">Low Stock</span>
+                  {% else %}
+                    <span class="badge-status badge-paid">In Stock</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right;">
+                  <div class="actions-cell">
+                    <!-- Quick Stock Adjust Button -->
+                    <button class="table-action-btn btn-stock-adjust" data-id="{{ p.id }}" data-name="{{ p.name }}" data-stock="{{ p.stock_quantity }}" title="Adjust Stock">
+                      <i data-lucide="sliders" style="width: 14px; height: 14px;"></i>
+                    </button>
+                    <!-- Edit Product -->
+                    <a href="{{ url_for('inventory.edit_product', id=p.id) }}" class="table-action-btn" title="Edit Product">
+                      <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                No products found. Click <a href="{{ url_for('inventory.add_product') }}" style="color: var(--accent-green-text); font-weight: 600;">+ Add Product</a> to create catalog entries.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Stock Adjustment Modal -->
+<div class="modal-backdrop" id="stock-adjust-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Adjust Inventory Stock</h3>
+      <button class="modal-close-btn" onclick="document.getElementById('stock-adjust-modal').classList.remove('show')">
+        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
+    <form action="{{ url_for('inventory.stock_adjustment') }}" method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="product_id" id="adjust-prod-id">
+        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);" id="adjust-prod-name">Product Name</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);" id="adjust-current-stock">Current Stock: 0</div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label">Adjustment Quantity (+ or -)</label>
+          <input type="number" step="any" name="quantity" class="form-input" placeholder="e.g. +10 to add, -2 to remove" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <select name="reason" class="filter-select" style="width: 100%; height: 38px;">
+            <option value="adjustment">Stock Count Correction</option>
+            <option value="damaged">Damaged / Expired Goods</option>
+            <option value="internal">Store Use / Sample</option>
+            <option value="return_supplier">Return to Supplier</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Audit Notes</label>
+          <input type="text" name="notes" class="form-input" placeholder="Optional audit memo">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('stock-adjust-modal').classList.remove('show')">Cancel</button>
+        <button type="submit" class="btn-primary" style="background: var(--accent-green);">Save Adjustment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.querySelectorAll(".btn-stock-adjust").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-id");
+      const name = btn.getAttribute("data-name");
+      const stock = btn.getAttribute("data-stock");
+
+      document.getElementById("adjust-prod-id").value = id;
+      document.getElementById("adjust-prod-name").textContent = name;
+      document.getElementById("adjust-current-stock").textContent = `Current Stock: ${stock}`;
+
+      document.getElementById("stock-adjust-modal").classList.add("show");
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Shop Settings & Invoicing Rules - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Shop Profile & Business Settings</h1>
+    <p class="page-subtitle">Configure store contact details, tax compliance, invoice numbering format, and receipt footer notes.</p>
+  </div>
+</div>
+
+{% if success %}
+<div class="card" style="border-left: 4px solid var(--accent-green); background: rgba(16, 185, 129, 0.08); padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
+  <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
+  <div>
+    <strong style="color: var(--accent-green); display: block;">Settings Saved Successfully</strong>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">All invoice headers, tax calculations, and store configurations have been updated.</span>
+  </div>
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('auth.settings') }}">
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    
+    <!-- Left Column: Primary Settings -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Store Identity -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="store" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Business Identity & Category
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="name">Shop / Business Name *</label>
+          <input type="text" id="name" name="name" class="form-control" required 
+                 value="{{ business.name if business else '' }}" 
+                 placeholder="e.g. Shree Ganesh Supermarket">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Printed prominently at the top of all thermal receipts and tax invoices</small>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="category">Business Category</label>
+            <select id="category" name="category" class="form-control">
+              <option value="kirana" {% if business and business.category == 'kirana' %}selected{% endif %}>Kirana / Grocery Store</option>
+              <option value="clothing" {% if business and business.category == 'clothing' %}selected{% endif %}>Clothing & Apparel</option>
+              <option value="electronics" {% if business and business.category == 'electronics' %}selected{% endif %}>Electronics & Mobile</option>
+              <option value="medical" {% if business and business.category == 'medical' %}selected{% endif %}>Pharmacy / Medical</option>
+              <option value="restaurant" {% if business and business.category == 'restaurant' %}selected{% endif %}>Cafe & Restaurant</option>
+              <option value="retail" {% if business and business.category == 'retail' %}selected{% endif %}>General Retail / Wholesale</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="currency">Currency Symbol</label>
+            <input type="text" id="currency" name="currency" class="form-control" 
+                   value="{{ business.currency if business else '₹' }}" placeholder="₹">
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact & Address -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="map-pin" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Address & Contact Details
+        </h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="phone">Store Contact Phone *</label>
+            <input type="text" id="phone" name="phone" class="form-control" required 
+                   value="{{ business.phone if business else '' }}" placeholder="9876543210">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Store Email</label>
+            <input type="email" id="email" name="email" class="form-control" 
+                   value="{{ business.email if business else '' }}" placeholder="shop@example.com">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="address">Full Store Address</label>
+          <textarea id="address" name="address" class="form-control" rows="2" 
+                    placeholder="Shop No., Market Name, Street, City, Pincode">{{ business.address if business else '' }}</textarea>
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Appears on printed invoices for customer reference</small>
+        </div>
+      </div>
+
+      <!-- Receipt Footer / Terms -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="file-text" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Receipt Terms & Footer Notes
+        </h3>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="terms_conditions">Invoice Terms & Conditions / Thank You Message</label>
+          <textarea id="terms_conditions" name="terms_conditions" class="form-control" rows="3" 
+                    placeholder="e.g. Goods once sold can be exchanged within 7 days. Thank you for your business!">{{ business.terms_conditions if business else 'Thank you for your business!' }}</textarea>
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Printed at the bottom of both thermal slips and standard invoices</small>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: GST, Invoicing & Actions -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Tax & GST Settings -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="landmark" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Taxation & GST
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="gstin">GSTIN / Tax Identification No.</label>
+          <input type="text" id="gstin" name="gstin" class="form-control" 
+                 value="{{ business.gstin if business else '' }}" 
+                 placeholder="e.g. 27ABCDE1234F1Z5">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Leave empty if unregistered for GST</small>
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600;">
+            <input type="checkbox" name="tax_enabled" value="1" {% if business and business.tax_enabled %}checked{% endif %}>
+            <span>Enable GST Calculations on Sales</span>
+          </label>
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">
+            When checked, POS invoices split taxes into CGST & SGST.
+          </small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="default_tax_rate">Default Tax Rate (%)</label>
+          <select id="default_tax_rate" name="default_tax_rate" class="form-control">
+            <option value="0" {% if business and business.default_tax_rate == 0 %}selected{% endif %}>0% (Tax Exempt)</option>
+            <option value="5" {% if business and business.default_tax_rate == 5 %}selected{% endif %}>5% (Essential Commodities)</option>
+            <option value="12" {% if business and business.default_tax_rate == 12 %}selected{% endif %}>12% (Standard)</option>
+            <option value="18" {% if business and business.default_tax_rate == 18 %}selected{% endif %}>18% (Standard Goods)</option>
+            <option value="28" {% if business and business.default_tax_rate == 28 %}selected{% endif %}>28% (Luxury)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Invoicing Format -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="receipt" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Invoice Numbering
+        </h3>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="invoice_prefix">Invoice Prefix</label>
+          <input type="text" id="invoice_prefix" name="invoice_prefix" class="form-control" 
+                 value="{{ business.invoice_prefix if business else 'INV-' }}" placeholder="INV-">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">e.g. INV-20261105-0001</small>
+        </div>
+      </div>
+
+      <!-- Save Button Card -->
+      <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="submit" class="btn btn-primary" style="justify-content: center; padding: 12px; font-weight: 600;">
+          <i data-lucide="check" style="width: 18px; height: 18px;"></i> Save All Settings
+        </button>
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary" style="justify-content: center;">
+          Back to Dashboard
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+</form>
+{% endblock %}

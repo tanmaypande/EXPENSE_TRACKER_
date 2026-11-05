@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Print Invoice {{ sale.invoice_number }}</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000000;
+      background: #FFFFFF;
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 20px;
+    }
+
+    /* Format Switcher Header (Hidden in Print) */
+    .no-print {
+      max-width: 800px;
+      margin: 0 auto 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: 8px;
+    }
+    .btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .btn-primary {
+      background: #059669;
+      color: #ffffff;
+      border-color: #059669;
+    }
+
+    /* -------------------------------------------------------------
+       1. THERMAL RECEIPT (80mm / 58mm)
+       ------------------------------------------------------------- */
+    .thermal-receipt {
+      width: 80mm;
+      max-width: 80mm;
+      margin: 0 auto;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      padding: 4mm;
+      border: 1px dashed #ccc;
+    }
+    .thermal-receipt .center { text-align: center; }
+    .thermal-receipt .bold { font-weight: bold; }
+    .thermal-receipt .divider {
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
+    .thermal-receipt table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .thermal-receipt table th {
+      border-bottom: 1px dashed #000;
+      text-align: left;
+      padding: 3px 0;
+    }
+    .thermal-receipt table td {
+      padding: 3px 0;
+    }
+
+    /* -------------------------------------------------------------
+       2. A4 TAX INVOICE
+       ------------------------------------------------------------- */
+    .a4-invoice {
+      width: 100%;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 10mm;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .a4-invoice table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .a4-invoice th, .a4-invoice td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .a4-invoice th {
+      background-color: #f8fafc;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* -------------------------------------------------------------
+       PRINT MEDIA QUERIES
+       ------------------------------------------------------------- */
+    @media print {
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .thermal-receipt {
+        border: none;
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+      }
+      .a4-invoice {
+        border: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Action Bar -->
+  <div class="no-print">
+    <div>
+      <span style="font-weight: 700;">Format:</span>
+      <a href="?format=thermal" class="btn {{ 'btn-primary' if format_type == 'thermal' else '' }}">80mm Thermal Receipt</a>
+      <a href="?format=a4" class="btn {{ 'btn-primary' if format_type == 'a4' else '' }}">A4 Tax Invoice</a>
+    </div>
+    <div>
+      <button onclick="window.print()" class="btn btn-primary">Print Now (Ctrl+P)</button>
+      <button onclick="window.close()" class="btn">Close</button>
+    </div>
+  </div>
+
+  {% if format_type == 'a4' %}
+    <!-- =========================================================
+         FULL A4 TAX INVOICE
+         ========================================================= -->
+    <div class="a4-invoice">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #000;">
+        <div>
+          <h1 style="font-size: 22px; font-weight: 800; text-transform: uppercase;">{{ sale.business_name }}</h1>
+          <p>{{ sale.business_address }}</p>
+          <p>Phone: {{ sale.business_phone }} | Email: {{ sale.business_email }}</p>
+          {% if sale.business_gstin %}
+            <p style="font-weight: 700;">GSTIN: {{ sale.business_gstin }}</p>
+          {% endif %}
+        </div>
+        <div style="text-align: right;">
+          <h2 style="font-size: 20px; font-weight: 800; color: #059669;">TAX INVOICE</h2>
+          <p style="font-weight: 700; font-size: 15px;">{{ sale.invoice_number }}</p>
+          <p>Date: {{ sale.created_at }}</p>
+          <p>Cashier: {{ sale.cashier_name or 'Cashier' }}</p>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; padding: 12px 0;">
+        <div>
+          <p style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b;">Customer Details</p>
+          <p style="font-weight: 700; font-size: 14px;">{{ sale.customer_name or 'Walk-in Customer' }}</p>
+          {% if sale.customer_phone %}
+            <p>Phone: {{ sale.customer_phone }}</p>
+          {% endif %}
+        </div>
+        <div style="text-align: right;">
+          <p style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b;">Payment Details</p>
+          <p style="font-weight: 700; text-transform: uppercase;">Method: {{ sale.payment_method }}</p>
+          <p>Status: {{ sale.payment_status|capitalize }}</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>Item Description</th>
+            <th style="width: 80px; text-align: right;">Unit Rate</th>
+            <th style="width: 50px; text-align: center;">Qty</th>
+            {% if sale.tax_enabled %}
+              <th style="width: 60px; text-align: right;">GST %</th>
+              <th style="width: 70px; text-align: right;">GST Tax</th>
+            {% endif %}
+            <th style="width: 90px; text-align: right;">Total Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for itm in items %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <strong>{{ itm.product_name }}</strong>
+                {% if itm.sku %}
+                  <span style="font-size: 10px; color: #64748b; display: block;">SKU: {{ itm.sku }}</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">{{ sale.currency }}{{ "{:,.2f}".format(itm.unit_price) }}</td>
+              <td style="text-align: center;">{{ itm.quantity }}</td>
+              {% if sale.tax_enabled %}
+                <td style="text-align: right;">{{ itm.tax_rate }}%</td>
+                <td style="text-align: right;">{{ sale.currency }}{{ "{:,.2f}".format(itm.tax_amount) }}</td>
+              {% endif %}
+              <td style="text-align: right; font-weight: 700;">{{ sale.currency }}{{ "{:,.2f}".format(itm.total_amount) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+        <div style="width: 280px; line-height: 1.8;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Subtotal:</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.subtotal) }}</span>
+          </div>
+          {% if sale.discount_amount > 0 %}
+            <div style="display: flex; justify-content: space-between; color: #059669;">
+              <span>Discount:</span>
+              <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
+            </div>
+          {% endif %}
+          {% if sale.tax_enabled %}
+            <div style="display: flex; justify-content: space-between;">
+              <span>CGST:</span>
+              <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.cgst_amount) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>SGST:</span>
+              <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.sgst_amount) }}</span>
+            </div>
+          {% endif %}
+          <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; border-top: 2px solid #000; padding-top: 4px;">
+            <span>Grand Total:</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.grand_total) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Paid Amount:</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.paid_amount) }}</span>
+          </div>
+          {% if sale.balance_amount > 0 %}
+            <div style="display: flex; justify-content: space-between; font-weight: 700; color: #dc2626;">
+              <span>Balance Due:</span>
+              <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.balance_amount) }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="margin-top: 30px; text-align: center; border-top: 1px solid #cbd5e1; padding-top: 10px; font-size: 11px;">
+        <p>{{ sale.terms_conditions }}</p>
+        <p style="margin-top: 4px; font-weight: 700;">Authorized Signatory / Computer Generated Invoice</p>
+      </div>
+    </div>
+
+  {% else %}
+    <!-- =========================================================
+         COMPACT 80MM / 58MM THERMAL RECEIPT
+         ========================================================= -->
+    <div class="thermal-receipt">
+      <div class="center bold" style="font-size: 14px;">{{ sale.business_name }}</div>
+      <div class="center">{{ sale.business_address or '' }}</div>
+      <div class="center">Phone: {{ sale.business_phone or '-' }}</div>
+      {% if sale.business_gstin %}
+        <div class="center bold">GSTIN: {{ sale.business_gstin }}</div>
+      {% endif %}
+
+      <div class="divider"></div>
+      <div><strong>Inv:</strong> {{ sale.invoice_number }}</div>
+      <div><strong>Date:</strong> {{ sale.created_at }}</div>
+      <div><strong>Customer:</strong> {{ sale.customer_name or 'Walk-in' }}</div>
+      {% if sale.customer_phone %}
+        <div><strong>Phone:</strong> {{ sale.customer_phone }}</div>
+      {% endif %}
+      <div class="divider"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th style="text-align: center;">Qty</th>
+            <th style="text-align: right;">Price</th>
+            <th style="text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for itm in items %}
+            <tr>
+              <td>{{ itm.product_name }}</td>
+              <td style="text-align: center;">{{ itm.quantity }}</td>
+              <td style="text-align: right;">{{ "{:,.2f}".format(itm.unit_price) }}</td>
+              <td style="text-align: right;">{{ "{:,.2f}".format(itm.total_amount) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Subtotal:</span>
+        <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.subtotal) }}</span>
+      </div>
+      {% if sale.discount_amount > 0 %}
+        <div style="display: flex; justify-content: space-between;">
+          <span>Discount:</span>
+          <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
+        </div>
+      {% endif %}
+      {% if sale.tax_enabled %}
+        <div style="display: flex; justify-content: space-between;">
+          <span>CGST:</span>
+          <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.cgst_amount) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>SGST:</span>
+          <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.sgst_amount) }}</span>
+        </div>
+      {% endif %}
+
+      <div class="divider"></div>
+      <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
+        <span>TOTAL:</span>
+        <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.grand_total) }}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Paid ({{ sale.payment_method }}):</span>
+        <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.paid_amount) }}</span>
+      </div>
+      {% if sale.balance_amount > 0 %}
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>Balance:</span>
+          <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.balance_amount) }}</span>
+        </div>
+      {% endif %}
+
+      <div class="divider"></div>
+      <div class="center" style="font-size: 10px; margin-top: 6px;">
+        {{ sale.terms_conditions }}
+      </div>
+      <div class="center bold" style="margin-top: 4px;">*** THANK YOU ***</div>
+    </div>
+  {% endif %}
+
+</body>
+</html>

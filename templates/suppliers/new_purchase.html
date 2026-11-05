@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Inward Stock / New Purchase - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+      <a href="{{ url_for('suppliers.list_purchases') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Inward Bills
+      </a>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">New Purchase</span>
+    </div>
+    <h1 class="page-title">Receive Inward Stock / Vendor Purchase</h1>
+    <p class="page-subtitle">Record supplier deliveries. Stock quantities and purchase history update automatically upon confirmation.</p>
+  </div>
+</div>
+
+<form id="purchaseForm" method="POST" action="{{ url_for('suppliers.new_purchase') }}" onsubmit="return validatePurchaseForm()">
+  <input type="hidden" name="purchase_items_json" id="purchase_items_json">
+
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    
+    <!-- Left Column: Items Table -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Supplier & Bill Meta Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="file-text" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Vendor & Invoice Details
+        </h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="supplier_id">Select Supplier</label>
+            <select id="supplier_id" name="supplier_id" class="form-control">
+              <option value="">-- Direct / Unregistered Vendor --</option>
+              {% for s in suppliers %}
+                <option value="{{ s.id }}">{{ s.name }} ({{ s.phone or 'No Phone' }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="purchase_number">Vendor Invoice / PO Number</label>
+            <input type="text" id="purchase_number" name="purchase_number" class="form-control" 
+                   placeholder="e.g. BILL-9821 or PO-001">
+          </div>
+        </div>
+      </div>
+
+      <!-- Inward Items Card -->
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="boxes" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+            Items to Inward / Restock
+          </h3>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">
+            <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Add Row
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="itemsTable">
+            <thead>
+              <tr>
+                <th style="width: 45%;">Product</th>
+                <th style="width: 20%;">Quantity</th>
+                <th style="width: 20%;">Cost Price (₹)</th>
+                <th style="width: 15%; text-align: right;">Total</th>
+                <th style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsTbody">
+              <!-- Dynamic Rows Added by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); background: var(--bg-secondary);">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">
+            <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Add Another Product
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Settlement & Totals -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Summary Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="calculator" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Payment & Settlement
+        </h3>
+
+        <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: var(--text-muted); font-size: 0.9rem;">Total Purchase Cost:</span>
+            <span id="grandTotalDisplay" style="font-size: 1.3rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">₹0.00</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">
+            <span>Amount Paid:</span>
+            <span id="paidDisplay" style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">₹0.00</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+            <span style="color: var(--text-muted);">Balance Due (Payable):</span>
+            <span id="balanceDisplay" style="font-family: 'JetBrains Mono', monospace; color: var(--accent-red);">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="paid_amount" style="margin: 0;">Amount Paid Now (₹)</label>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.72rem;" onclick="payInFull()">
+              Pay Full
+            </button>
+          </div>
+          <input type="number" step="0.01" min="0" id="paid_amount" name="paid_amount" class="form-control" value="0.00" oninput="updateCalculations()">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="payment_method">Payment Mode</label>
+          <select id="payment_method" name="payment_method" class="form-control">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank Transfer / NEFT</option>
+            <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
+            <option value="card">Card (Debit / Credit)</option>
+            <option value="credit">Credit / Pay Later</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notes">Notes / Consignment Ref</label>
+          <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="e.g. Batch #4492, delivered via transporter"></textarea>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+          <button type="submit" class="btn btn-primary" style="justify-content: center; padding: 12px; font-weight: 600;">
+            <i data-lucide="check" style="width: 18px; height: 18px;"></i> Confirm Inward Delivery
+          </button>
+          <a href="{{ url_for('suppliers.list_purchases') }}" class="btn btn-secondary" style="justify-content: center;">
+            Cancel
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</form>
+
+<script>
+  // Product Catalog available for client-side row selection
+  const catalog = [
+    {% for p in products %}
+      { id: {{ p.id }}, name: {{ p.name|tojson }}, price: {{ p.purchase_price }}, unit: {{ p.unit|tojson }} },
+    {% endfor %}
+  ];
+
+  let rowCounter = 0;
+
+  function addItemRow() {
+    rowCounter++;
+    const tbody = document.getElementById('itemsTbody');
+    const tr = document.createElement('tr');
+    tr.id = `row-${rowCounter}`;
+
+    let options = '<option value="">-- Choose Product --</option>';
+    catalog.forEach(p => {
+      options += `<option value="${p.id}" data-price="${p.price}" data-unit="${p.unit}">${p.name} (Cost: ₹${p.price.toFixed(2)})</option>`;
+    });
+
+    tr.innerHTML = `
+      <td>
+        <select class="form-control prod-select" onchange="onProductSelect(${rowCounter})" required>
+          ${options}
+        </select>
+      </td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="number" step="0.01" min="0.01" class="form-control qty-input" value="1" oninput="updateCalculations()" required>
+          <span class="unit-label" style="font-size: 0.75rem; color: var(--text-muted); min-width: 24px;">pcs</span>
+        </div>
+      </td>
+      <td>
+        <input type="number" step="0.01" min="0" class="form-control cost-input" value="0.00" oninput="updateCalculations()" required>
+      </td>
+      <td style="text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600;" class="row-total">
+        ₹0.00
+      </td>
+      <td style="text-align: center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="removeRow(${rowCounter})" style="padding: 4px 6px; color: var(--accent-red);">
+          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+    lucide.createIcons();
+  }
+
+  function onProductSelect(rowId) {
+    const row = document.getElementById(`row-${rowId}`);
+    const select = row.querySelector('.prod-select');
+    const selectedOption = select.options[select.selectedIndex];
+    const cost = selectedOption.getAttribute('data-price') || 0;
+    const unit = selectedOption.getAttribute('data-unit') || 'pcs';
+
+    row.querySelector('.cost-input').value = parseFloat(cost).toFixed(2);
+    row.querySelector('.unit-label').textContent = unit;
+    updateCalculations();
+  }
+
+  function removeRow(rowId) {
+    const row = document.getElementById(`row-${rowId}`);
+    if (row) {
+      row.remove();
+      updateCalculations();
+    }
+  }
+
+  function updateCalculations() {
+    let grandTotal = 0;
+    const rows = document.querySelectorAll('#itemsTbody tr');
+
+    rows.forEach(row => {
+      const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+      const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+      const subtotal = qty * cost;
+      grandTotal += subtotal;
+      row.querySelector('.row-total').textContent = `₹${subtotal.toFixed(2)}`;
+    });
+
+    document.getElementById('grandTotalDisplay').textContent = `₹${grandTotal.toFixed(2)}`;
+
+    const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
+    document.getElementById('paidDisplay').textContent = `₹${paid.toFixed(2)}`;
+
+    const balance = Math.max(0, grandTotal - paid);
+    document.getElementById('balanceDisplay').textContent = `₹${balance.toFixed(2)}`;
+  }
+
+  function payInFull() {
+    let grandTotal = 0;
+    const rows = document.querySelectorAll('#itemsTbody tr');
+    rows.forEach(row => {
+      const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+      const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+      grandTotal += (qty * cost);
+    });
+    document.getElementById('paid_amount').value = grandTotal.toFixed(2);
+    updateCalculations();
+  }
+
+  function validatePurchaseForm() {
+    const items = [];
+    const rows = document.querySelectorAll('#itemsTbody tr');
+
+    rows.forEach(row => {
+      const prodId = row.querySelector('.prod-select').value;
+      const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+      const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+
+      if (prodId && qty > 0) {
+        items.push({
+          product_id: parseInt(prodId),
+          quantity: qty,
+          purchase_price: cost
+        });
+      }
+    });
+
+    if (items.length === 0) {
+      alert("Please select at least one product with quantity > 0.");
+      return false;
+    }
+
+    document.getElementById('purchase_items_json').value = JSON.stringify(items);
+    return true;
+  }
+
+  // Pre-seed 1 initial row
+  addItemRow();
+</script>
+{% endblock %}

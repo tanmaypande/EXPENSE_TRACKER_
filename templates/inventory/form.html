@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}{% if product %}Edit Product - {{ product.name }}{% else %}Add New Product{% endif %} - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+      <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Back to Products
+      </a>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">{% if product %}Edit Product{% else %}Add Product{% endif %}</span>
+    </div>
+    <h1 class="page-title">{% if product %}Edit Product: {{ product.name }}{% else %}Add New Product{% endif %}</h1>
+    <p class="page-subtitle">Configure product pricing, barcode scanning, stock tracking, and tax rates.</p>
+  </div>
+</div>
+
+<form method="POST" action="{% if product %}{{ url_for('inventory.edit_product', id=product.id) }}{% else %}{{ url_for('inventory.add_product') }}{% endif %}">
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    
+    <!-- Left Column: Primary Details -->
+    <div style="display: flex; flexDirection: column; gap: 20px;">
+      
+      <!-- Basic Info Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="tag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          General Information
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="name">Product Name *</label>
+          <input type="text" id="name" name="name" class="form-control" required 
+                 value="{{ product.name if product else '' }}" 
+                 placeholder="e.g. Basmati Rice 5kg, Premium Cotton Shirt, USB-C Cable">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="brand">Brand / Manufacturer</label>
+            <input type="text" id="brand" name="brand" class="form-control" 
+                   value="{{ product.brand if product else '' }}" 
+                   placeholder="e.g. Tata, Samsung, Zara, Local">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="category_id">Category</label>
+            <select id="category_id" name="category_id" class="form-control">
+              <option value="">-- No Category --</option>
+              {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>
+                  {{ cat.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="description">Product Description (Optional)</label>
+          <textarea id="description" name="description" class="form-control" rows="3" 
+                    placeholder="Provide additional details, specifications or batch notes...">{{ product.description if product else '' }}</textarea>
+        </div>
+      </div>
+
+      <!-- Pricing & Taxation Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="indian-rupee" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Pricing & Taxation
+        </h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="purchase_price">Cost / Purchase Price (₹)</label>
+            <input type="number" step="0.01" min="0" id="purchase_price" name="purchase_price" class="form-control" 
+                   value="{{ product.purchase_price if product else '0.00' }}" placeholder="0.00">
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Used for accurate profit calculation</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="selling_price">Selling / Retail Price (₹) *</label>
+            <input type="number" step="0.01" min="0" id="selling_price" name="selling_price" class="form-control" required 
+                   value="{{ product.selling_price if product else '0.00' }}" placeholder="0.00">
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Price billed at POS counter</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tax_rate">GST Tax Rate (%)</label>
+            <select id="tax_rate" name="tax_rate" class="form-control">
+              <option value="0" {% if product and product.tax_rate == 0 %}selected{% endif %}>0% (Exempt)</option>
+              <option value="5" {% if product and product.tax_rate == 5 %}selected{% endif %}>5% (Essential Goods)</option>
+              <option value="12" {% if product and product.tax_rate == 12 %}selected{% endif %}>12% (Standard)</option>
+              <option value="18" {% if (product and product.tax_rate == 18) or (not product and business.default_tax_rate == 18) %}selected{% endif %}>18% (Standard Goods)</option>
+              <option value="28" {% if product and product.tax_rate == 28 %}selected{% endif %}>28% (Luxury / Sin)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="margin-preview" style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Estimated Gross Margin:</span>
+          <span id="margin-badge" style="font-weight: 700; color: var(--accent-green); font-size: 0.95rem;">₹0.00 (0.0%)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Identifiers, Inventory, Actions -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Barcode & SKU Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="scan-barcode" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Codes & Scanning
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="barcode">Barcode / EAN (Scannable)</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="barcode" name="barcode" class="form-control" 
+                   value="{{ product.barcode if product else '' }}" 
+                   placeholder="Scan with barcode gun">
+            <button type="button" class="btn btn-secondary" onclick="generateRandomBarcode()" title="Generate Barcode">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Instant auto-add in POS terminal</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="sku">Internal SKU / Code</label>
+          <input type="text" id="sku" name="sku" class="form-control" 
+                 value="{{ product.sku if product else '' }}" 
+                 placeholder="e.g. ITM-101">
+        </div>
+      </div>
+
+      <!-- Stock & Inventory Card -->
+      <div class="card">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="boxes" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Inventory Settings
+        </h3>
+
+        {% if not product %}
+        <div class="form-group">
+          <label class="form-label" for="stock_quantity">Opening Stock Quantity</label>
+          <input type="number" step="0.01" min="0" id="stock_quantity" name="stock_quantity" class="form-control" value="0" placeholder="0">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Initial physical stock available in shop</small>
+        </div>
+        {% else %}
+        <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Current Physical Stock:</span>
+          <span style="font-size: 1.3rem; font-weight: 700; color: {% if product.stock_quantity <= product.min_stock_level %}var(--accent-red){% else %}var(--accent-green){% endif %};">
+            {{ product.stock_quantity }} {{ product.unit }}
+          </span>
+          <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            To modify stock, use the Stock Adjustment option on the Inventory table.
+          </span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="min_stock_level">Low Stock Alert Threshold</label>
+          <input type="number" step="1" min="0" id="min_stock_level" name="min_stock_level" class="form-control" 
+                 value="{{ product.min_stock_level if product else '5' }}" placeholder="5">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Flag warning when stock falls below this number</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="unit">Unit of Measurement</label>
+          <select id="unit" name="unit" class="form-control">
+            <option value="pcs" {% if product and product.unit == 'pcs' %}selected{% endif %}>Pieces (pcs)</option>
+            <option value="kg" {% if product and product.unit == 'kg' %}selected{% endif %}>Kilogram (kg)</option>
+            <option value="gm" {% if product and product.unit == 'gm' %}selected{% endif %}>Gram (gm)</option>
+            <option value="ltr" {% if product and product.unit == 'ltr' %}selected{% endif %}>Litre (ltr)</option>
+            <option value="ml" {% if product and product.unit == 'ml' %}selected{% endif %}>Millilitre (ml)</option>
+            <option value="box" {% if product and product.unit == 'box' %}selected{% endif %}>Box</option>
+            <option value="pack" {% if product and product.unit == 'pack' %}selected{% endif %}>Pack</option>
+            <option value="meter" {% if product and product.unit == 'meter' %}selected{% endif %}>Meter (m)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action Buttons Card -->
+      <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="submit" class="btn btn-primary" style="justify-content: center; padding: 12px; font-weight: 600;">
+          <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+          {% if product %}Save Product Changes{% else %}Save & Create Product{% endif %}
+        </button>
+        <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary" style="justify-content: center;">
+          Cancel
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+</form>
+
+<script>
+  function calculateMargin() {
+    const cost = parseFloat(document.getElementById('purchase_price').value) || 0;
+    const sell = parseFloat(document.getElementById('selling_price').value) || 0;
+    const badge = document.getElementById('margin-badge');
+
+    if (sell <= 0) {
+      badge.textContent = "₹0.00 (0.0%)";
+      badge.style.color = "var(--text-muted)";
+      return;
+    }
+
+    const marginAmt = sell - cost;
+    const marginPct = ((marginAmt / sell) * 100).toFixed(1);
+
+    badge.textContent = `₹${marginAmt.toFixed(2)} (${marginPct}%)`;
+    if (marginAmt < 0) {
+      badge.style.color = "var(--accent-red)";
+    } else {
+      badge.style.color = "var(--accent-green)";
+    }
+  }
+
+  function generateRandomBarcode() {
+    const code = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    document.getElementById('barcode').value = code;
+  }
+
+  document.getElementById('purchase_price').addEventListener('input', calculateMargin);
+  document.getElementById('selling_price').addEventListener('input', calculateMargin);
+  calculateMargin();
+</script>
+{% endblock %}

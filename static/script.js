@@ -1,13 +1,19 @@
 /**
- * APEX FINTECH DASHBOARD ENGINE
- * Handles charts, real-time filtering, modals, budget progress, and UI interactions.
+ * EXPENSE TRACKER SCRIPT
+ * Theme switching, Chart.js instances, live filters, modals, and budget tracking.
  */
+
+let cashflowChartInstance = null;
+let categoryChartInstance = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Lucide icons
   if (window.lucide) {
     window.lucide.createIcons();
   }
+
+  // Initialize Theme Switcher (Dark & Light)
+  initThemeSwitcher();
 
   // Current formatted date in topbar
   const dateElement = document.getElementById("current-date-display");
@@ -17,87 +23,178 @@ document.addEventListener("DOMContentLoaded", () => {
     dateElement.textContent = now.toLocaleDateString("en-US", options);
   }
 
-  // -------------------------------------------------------------------------
-  // 1. SIDEBAR & MOBILE DRAWER LOGIC
-  // -------------------------------------------------------------------------
+  // Sidebar & Mobile Navigation
+  initSidebar();
+
+  // User Profile Dropdown
+  initProfileDropdown();
+
+  // Monthly Budget Tracker
+  initBudgetWidget();
+
+  // Chart.js Analytics
+  initAnalyticsCharts();
+
+  // Table Search & Filters
+  initTransactionFilters();
+
+  // Add & Edit Modals
+  initModals();
+});
+
+// =========================================================================
+// THEME SWITCHER (DARK & LIGHT)
+// =========================================================================
+function initThemeSwitcher() {
+  const themeToggleBtns = document.querySelectorAll(".theme-toggle-btn");
+
+  // Determine current active theme
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+  updateThemeIcons(currentTheme);
+
+  themeToggleBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const activeTheme = document.documentElement.getAttribute("data-theme") || "dark";
+      const newTheme = activeTheme === "dark" ? "light" : "dark";
+
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+
+      updateThemeIcons(newTheme);
+      updateChartThemes(newTheme);
+    });
+  });
+}
+
+function updateThemeIcons(theme) {
+  const themeToggleBtns = document.querySelectorAll(".theme-toggle-btn");
+  themeToggleBtns.forEach((btn) => {
+    btn.innerHTML =
+      theme === "dark"
+        ? '<i data-lucide="sun" style="width: 17px; height: 17px;"></i>'
+        : '<i data-lucide="moon" style="width: 17px; height: 17px;"></i>';
+  });
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function updateChartThemes(theme) {
+  const isDark = theme === "dark";
+  const textColor = isDark ? "#94A3B8" : "#64748B";
+  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+
+  if (cashflowChartInstance) {
+    if (cashflowChartInstance.options.scales.x) {
+      cashflowChartInstance.options.scales.x.ticks.color = textColor;
+    }
+    if (cashflowChartInstance.options.scales.y) {
+      cashflowChartInstance.options.scales.y.ticks.color = textColor;
+      cashflowChartInstance.options.scales.y.grid.color = gridColor;
+    }
+    if (cashflowChartInstance.options.plugins.legend) {
+      cashflowChartInstance.options.plugins.legend.labels.color = textColor;
+    }
+    cashflowChartInstance.update();
+  }
+
+  if (categoryChartInstance) {
+    if (categoryChartInstance.options.plugins.legend) {
+      categoryChartInstance.options.plugins.legend.labels.color = textColor;
+    }
+    categoryChartInstance.update();
+  }
+}
+
+// =========================================================================
+// SIDEBAR & MOBILE DRAWER
+// =========================================================================
+function initSidebar() {
   const sidebar = document.getElementById("main-sidebar");
   const collapseBtn = document.getElementById("sidebar-collapse-btn");
   const mobileToggle = document.getElementById("mobile-menu-toggle");
+  const closeBtn = document.getElementById("sidebar-close-btn-mobile");
+  const backdrop = document.getElementById("sidebar-backdrop");
 
   if (collapseBtn && sidebar) {
-    // Restore sidebar state from localStorage
-    const isCollapsed = localStorage.getItem("apex_sidebar_collapsed") === "true";
+    const isCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
     if (isCollapsed) {
       sidebar.classList.add("collapsed");
     }
 
     collapseBtn.addEventListener("click", () => {
       sidebar.classList.toggle("collapsed");
-      localStorage.setItem("apex_sidebar_collapsed", sidebar.classList.contains("collapsed"));
+      localStorage.setItem("sidebar_collapsed", sidebar.classList.contains("collapsed"));
     });
   }
 
-  if (mobileToggle && sidebar) {
-    mobileToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("mobile-open");
-    });
+  function closeMobileSidebar() {
+    if (sidebar) sidebar.classList.remove("mobile-open");
+    if (backdrop) backdrop.classList.remove("show");
+  }
 
-    // Close on outside click on mobile
-    document.addEventListener("click", (e) => {
-      if (window.innerWidth <= 992 && sidebar.classList.contains("mobile-open")) {
-        if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
-          sidebar.classList.remove("mobile-open");
-        }
+  function openMobileSidebar() {
+    if (sidebar) sidebar.classList.add("mobile-open");
+    if (backdrop) backdrop.classList.add("show");
+  }
+
+  if (mobileToggle && sidebar) {
+    mobileToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (sidebar.classList.contains("mobile-open")) {
+        closeMobileSidebar();
+      } else {
+        openMobileSidebar();
       }
     });
   }
 
-  // -------------------------------------------------------------------------
-  // 2. USER PROFILE DROPDOWN
-  // -------------------------------------------------------------------------
-  const profileTrigger = document.getElementById("profile-dropdown-trigger");
-  const profileMenu = document.getElementById("profile-dropdown-menu");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeMobileSidebar);
+  }
 
-  if (profileTrigger && profileMenu) {
-    profileTrigger.addEventListener("click", (e) => {
+  if (backdrop) {
+    backdrop.addEventListener("click", closeMobileSidebar);
+  }
+
+  // Close sidebar on link click on mobile
+  const navLinks = document.querySelectorAll(".sidebar-nav .nav-link");
+  navLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      if (window.innerWidth <= 992) {
+        closeMobileSidebar();
+      }
+    });
+  });
+}
+
+// =========================================================================
+// PROFILE DROPDOWN
+// =========================================================================
+function initProfileDropdown() {
+  const trigger = document.getElementById("profile-dropdown-trigger");
+  const menu = document.getElementById("profile-dropdown-menu");
+
+  if (trigger && menu) {
+    trigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      profileMenu.classList.toggle("show");
+      menu.classList.toggle("show");
     });
 
     document.addEventListener("click", () => {
-      profileMenu.classList.remove("show");
+      menu.classList.remove("show");
     });
   }
-
-  // -------------------------------------------------------------------------
-  // 3. MONTHLY BUDGET / LIMIT WIDGET
-  // -------------------------------------------------------------------------
-  initBudgetWidget();
-
-  // -------------------------------------------------------------------------
-  // 4. CHART.JS ANALYTICS INITIALIZATION
-  // -------------------------------------------------------------------------
-  initAnalyticsCharts();
-
-  // -------------------------------------------------------------------------
-  // 5. TRANSACTION TABLE SEARCH & FILTERS
-  // -------------------------------------------------------------------------
-  initTransactionFilters();
-
-  // -------------------------------------------------------------------------
-  // 6. MODALS: ADD TRANSACTION & EDIT TRANSACTION
-  // -------------------------------------------------------------------------
-  initModals();
-});
+}
 
 // =========================================================================
-// BUDGET WIDGET FUNCTIONALITY
+// MONTHLY BUDGET TRACKER
 // =========================================================================
 function initBudgetWidget() {
-  const defaultLimit = 30000;
-  const storedLimit = parseFloat(localStorage.getItem("apex_monthly_limit")) || defaultLimit;
+  const defaultLimit = 25000;
+  const storedLimit = parseFloat(localStorage.getItem("user_monthly_limit")) || defaultLimit;
 
-  // Retrieve total expenses from hidden data element or DOM
   const totalExpenseElem = document.getElementById("raw-total-expense");
   const totalExpense = totalExpenseElem ? parseFloat(totalExpenseElem.value) || 0 : 0;
 
@@ -106,12 +203,12 @@ function initBudgetWidget() {
   const editLimitBtn = document.getElementById("edit-limit-btn");
   if (editLimitBtn) {
     editLimitBtn.addEventListener("click", () => {
-      const current = parseFloat(localStorage.getItem("apex_monthly_limit")) || defaultLimit;
-      const input = prompt("Enter your monthly expense limit (₹):", current);
+      const current = parseFloat(localStorage.getItem("user_monthly_limit")) || defaultLimit;
+      const input = prompt("Set your monthly spending budget (₹):", current);
       if (input !== null) {
         const newLimit = parseFloat(input);
         if (!isNaN(newLimit) && newLimit > 0) {
-          localStorage.setItem("apex_monthly_limit", newLimit);
+          localStorage.setItem("user_monthly_limit", newLimit);
           updateBudgetDisplay(newLimit, totalExpense);
         } else {
           alert("Please enter a valid positive number.");
@@ -139,7 +236,6 @@ function updateBudgetDisplay(limit, expense) {
 
   progressBar.style.width = `${percentage}%`;
 
-  // Color and pill status depending on ratio
   progressBar.classList.remove("warning", "danger");
   if (statusPill) {
     statusPill.classList.remove("good", "warning", "danger");
@@ -147,11 +243,11 @@ function updateBudgetDisplay(limit, expense) {
     if (expense > limit) {
       progressBar.classList.add("danger");
       statusPill.classList.add("danger");
-      statusPill.textContent = "Limit Exceeded";
+      statusPill.textContent = "Over Budget";
     } else if (percentage >= 80) {
       progressBar.classList.add("warning");
       statusPill.classList.add("warning");
-      statusPill.textContent = `${percentage}% Consumed`;
+      statusPill.textContent = `${percentage}% Used`;
     } else {
       statusPill.classList.add("good");
       statusPill.textContent = "On Track";
@@ -166,7 +262,6 @@ function initAnalyticsCharts() {
   const cashflowCtx = document.getElementById("cashflowTrendChart");
   const categoryCtx = document.getElementById("categoryDonutChart");
 
-  // Read backend JSON data embedded in script tags
   let monthlyData = [];
   let categoryData = [];
 
@@ -177,7 +272,7 @@ function initAnalyticsCharts() {
     try {
       monthlyData = JSON.parse(monthlyScript.textContent);
     } catch (e) {
-      console.error("Error parsing monthly data", e);
+      console.error(e);
     }
   }
 
@@ -185,20 +280,22 @@ function initAnalyticsCharts() {
     try {
       categoryData = JSON.parse(categoryScript.textContent);
     } catch (e) {
-      console.error("Error parsing category data", e);
+      console.error(e);
     }
   }
 
-  // --- 1. Cashflow Trend Chart (Monthly Income vs Expense) ---
+  const isDark = (document.documentElement.getAttribute("data-theme") || "dark") === "dark";
+  const textColor = isDark ? "#94A3B8" : "#64748B";
+  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+
+  // --- Cashflow Trend Chart ---
   if (cashflowCtx && typeof Chart !== "undefined") {
-    // If no monthly aggregated data exists yet, create fallback labels
     let labels = [];
     let incomePoints = [];
     let expensePoints = [];
 
     if (monthlyData && monthlyData.length > 0) {
       labels = monthlyData.map((d) => {
-        // d.month is 'YYYY-MM'
         if (d.month) {
           const parts = d.month.split("-");
           const date = new Date(parts[0], parts[1] - 1, 1);
@@ -209,15 +306,14 @@ function initAnalyticsCharts() {
       incomePoints = monthlyData.map((d) => d.income || 0);
       expensePoints = monthlyData.map((d) => d.expense || 0);
     } else {
-      // Graceful fallback for single or initial session
-      labels = ["This Month"];
+      labels = ["Current"];
       const totalIncomeElem = document.getElementById("raw-total-income");
       const totalExpenseElem = document.getElementById("raw-total-expense");
       incomePoints = [totalIncomeElem ? parseFloat(totalIncomeElem.value) || 0 : 0];
       expensePoints = [totalExpenseElem ? parseFloat(totalExpenseElem.value) || 0 : 0];
     }
 
-    new Chart(cashflowCtx, {
+    cashflowChartInstance = new Chart(cashflowCtx, {
       type: "bar",
       data: {
         labels: labels,
@@ -225,20 +321,16 @@ function initAnalyticsCharts() {
           {
             label: "Income",
             data: incomePoints,
-            backgroundColor: "rgba(16, 185, 129, 0.8)",
-            borderColor: "#10B981",
-            borderWidth: 1,
-            borderRadius: 6,
-            maxBarThickness: 32,
+            backgroundColor: "#10B981",
+            borderRadius: 4,
+            maxBarThickness: 28,
           },
           {
             label: "Expenses",
             data: expensePoints,
-            backgroundColor: "rgba(244, 63, 94, 0.8)",
-            borderColor: "#F43F5E",
-            borderWidth: 1,
-            borderRadius: 6,
-            maxBarThickness: 32,
+            backgroundColor: "#EF4444",
+            borderRadius: 4,
+            maxBarThickness: 28,
           },
         ],
       },
@@ -250,22 +342,16 @@ function initAnalyticsCharts() {
             position: "top",
             align: "end",
             labels: {
-              color: "#94A3B8",
+              color: textColor,
               font: { family: "Inter", size: 12 },
               usePointStyle: true,
-              boxWidth: 8,
-              padding: 16,
+              boxWidth: 7,
+              padding: 14,
             },
           },
           tooltip: {
-            backgroundColor: "#151F32",
-            borderColor: "rgba(255, 255, 255, 0.15)",
-            borderWidth: 1,
-            titleColor: "#F9FAFB",
-            bodyColor: "#94A3B8",
-            padding: 12,
-            boxPadding: 6,
-            cornerRadius: 8,
+            padding: 10,
+            cornerRadius: 6,
             callbacks: {
               label: function (context) {
                 return `${context.dataset.label}: ₹${context.raw.toLocaleString("en-IN")}`;
@@ -276,15 +362,15 @@ function initAnalyticsCharts() {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: "#64748B", font: { family: "Inter", size: 11 } },
+            ticks: { color: textColor, font: { family: "Inter", size: 11 } },
           },
           y: {
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            grid: { color: gridColor },
             ticks: {
-              color: "#64748B",
+              color: textColor,
               font: { family: "Inter", size: 11 },
-              callback: function (value) {
-                return "₹" + value.toLocaleString("en-IN");
+              callback: function (val) {
+                return "₹" + val.toLocaleString("en-IN");
               },
             },
           },
@@ -293,7 +379,7 @@ function initAnalyticsCharts() {
     });
   }
 
-  // --- 2. Category Distribution Donut Chart ---
+  // --- Category Donut Chart ---
   if (categoryCtx && typeof Chart !== "undefined") {
     let catLabels = [];
     let catTotals = [];
@@ -303,23 +389,21 @@ function initAnalyticsCharts() {
       catTotals = categoryData.map((c) => c.total || 0);
     }
 
-    const palette = ["#10B981", "#06B6D4", "#6366F1", "#F59E0B", "#EC4899", "#8B5CF6", "#14B8A6"];
+    const palette = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#06B6D4", "#64748B"];
 
     if (catTotals.length === 0) {
-      // Empty state display
       const parent = categoryCtx.parentElement;
       if (parent) {
         categoryCtx.style.display = "none";
         const emptyMsg = document.createElement("div");
         emptyMsg.className = "chart-empty";
         emptyMsg.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
-          <p>No expense data recorded yet.</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">No expenses recorded yet.</p>
         `;
         parent.appendChild(emptyMsg);
       }
     } else {
-      new Chart(categoryCtx, {
+      categoryChartInstance = new Chart(categoryCtx, {
         type: "doughnut",
         data: {
           labels: catLabels,
@@ -328,38 +412,32 @@ function initAnalyticsCharts() {
               data: catTotals,
               backgroundColor: palette.slice(0, catLabels.length),
               borderWidth: 2,
-              borderColor: "#151F32",
-              hoverOffset: 6,
+              borderColor: "transparent",
             },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          cutout: "72%",
+          cutout: "70%",
           plugins: {
             legend: {
               position: "bottom",
               labels: {
-                color: "#94A3B8",
+                color: textColor,
                 font: { family: "Inter", size: 11 },
                 usePointStyle: true,
                 padding: 12,
               },
             },
             tooltip: {
-              backgroundColor: "#151F32",
-              borderColor: "rgba(255, 255, 255, 0.15)",
-              borderWidth: 1,
-              titleColor: "#F9FAFB",
-              bodyColor: "#94A3B8",
-              padding: 12,
-              cornerRadius: 8,
+              padding: 10,
+              cornerRadius: 6,
               callbacks: {
                 label: function (context) {
-                  const totalSum = context.dataset.data.reduce((a, b) => a + b, 0);
-                  const percentage = totalSum > 0 ? Math.round((context.raw / totalSum) * 100) : 0;
-                  return `${context.label}: ₹${context.raw.toLocaleString("en-IN")} (${percentage}%)`;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+                  return `${context.label}: ₹${context.raw.toLocaleString("en-IN")} (${pct}%)`;
                 },
               },
             },
@@ -371,7 +449,7 @@ function initAnalyticsCharts() {
 }
 
 // =========================================================================
-// REAL-TIME TRANSACTION TABLE SEARCH & FILTERS
+// TABLE SEARCH & FILTERS
 // =========================================================================
 function initTransactionFilters() {
   const searchInput = document.getElementById("table-search-input") || document.getElementById("global-search-input");
@@ -396,13 +474,8 @@ function initTransactionFilters() {
       const rowDate = (row.getAttribute("data-date") || "").toLowerCase();
       const rowAmount = (row.getAttribute("data-amount") || "").toLowerCase();
 
-      // Check Type
       const matchesType = activeType === "all" || rowType === activeType;
-
-      // Check Category
       const matchesCategory = category === "all" || rowCategory === category;
-
-      // Check Search Query
       const matchesSearch =
         query === "" ||
         rowCategory.includes(query) ||
@@ -427,7 +500,6 @@ function initTransactionFilters() {
     }
   }
 
-  // Type Toggle Buttons (All, Expense, Income)
   typeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       typeButtons.forEach((b) => b.classList.remove("active"));
@@ -447,7 +519,7 @@ function initTransactionFilters() {
 }
 
 // =========================================================================
-// MODALS LOGIC (ADD & EDIT TRANSACTIONS)
+// MODALS (ADD & EDIT)
 // =========================================================================
 function initModals() {
   const addModal = document.getElementById("add-transaction-modal");
@@ -456,29 +528,24 @@ function initModals() {
   const openAddBtns = document.querySelectorAll(".open-add-modal-btn");
   const closeBtns = document.querySelectorAll(".modal-close-trigger");
 
-  // Pre-fill today's date in add modal
   const addDateInput = document.getElementById("modal-add-date");
   if (addDateInput && !addDateInput.value) {
-    const today = new Date().toISOString().split("T")[0];
-    addDateInput.value = today;
+    addDateInput.value = new Date().toISOString().split("T")[0];
   }
 
-  // Open Add Modal
   openAddBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       if (addModal) {
-        // If button specifies an initial type (e.g. data-type="income")
-        const requestedType = btn.getAttribute("data-type");
-        if (requestedType) {
-          selectModalType(addModal, requestedType);
+        const reqType = btn.getAttribute("data-type");
+        if (reqType) {
+          selectModalType(addModal, reqType);
         }
         addModal.classList.add("show");
       }
     });
   });
 
-  // Close Modals on click outside or close button
   closeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       if (addModal) addModal.classList.remove("show");
@@ -496,18 +563,15 @@ function initModals() {
     }
   });
 
-  // Segmented Type Selector inside Add Modal
   if (addModal) {
     setupSegmentedControl(addModal);
     setupCategoryQuickPills(addModal);
   }
 
-  // Edit Modal Setup
   if (editModal) {
     setupSegmentedControl(editModal);
     setupCategoryQuickPills(editModal);
 
-    // Attach click events to all edit action buttons on rows
     const editBtns = document.querySelectorAll(".tx-edit-btn");
     editBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -518,13 +582,11 @@ function initModals() {
         const desc = btn.getAttribute("data-desc");
         const type = btn.getAttribute("data-type") || "expense";
 
-        // Set action of edit form to /edit/<id>
         const editForm = document.getElementById("edit-tx-form");
         if (editForm) {
           editForm.action = `/edit/${id}`;
         }
 
-        // Fill fields
         const dateInput = document.getElementById("modal-edit-date");
         const catInput = document.getElementById("modal-edit-category");
         const amtInput = document.getElementById("modal-edit-amount");
@@ -536,18 +598,15 @@ function initModals() {
         if (descInput) descInput.value = desc;
 
         selectModalType(editModal, type);
-
         editModal.classList.add("show");
       });
     });
   }
 
-  // Delete Confirmation Interceptor
   const deleteBtns = document.querySelectorAll(".tx-delete-btn");
   deleteBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
-      const confirmDelete = confirm("Are you sure you want to delete this transaction? This action cannot be undone.");
-      if (!confirmDelete) {
+      if (!confirm("Delete this transaction?")) {
         e.preventDefault();
       }
     });

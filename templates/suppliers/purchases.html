@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders & Inward Bills - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+      <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Suppliers
+      </a>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Purchase Orders</span>
+    </div>
+    <h1 class="page-title">Inward Purchases & Stock Receiving</h1>
+    <p class="page-subtitle">Track wholesale inventory orders, vendor invoices, and delivery receipts.</p>
+  </div>
+  <div>
+    <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-primary">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Inward Stock / New Purchase
+    </a>
+  </div>
+</div>
+
+<!-- Purchases Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="shopping-bag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      All Inward Stock Invoices
+    </h3>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ purchases|length }} Invoices</span>
+  </div>
+
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Purchase / PO #</th>
+          <th>Date</th>
+          <th>Supplier</th>
+          <th>Total Cost</th>
+          <th>Paid</th>
+          <th>Balance Due</th>
+          <th>Payment Mode</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if purchases %}
+          {% for p in purchases %}
+          <tr>
+            <td>
+              <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary);">
+                {{ p.purchase_number }}
+              </span>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">
+              {{ p.created_at[:10] if p.created_at else '' }}
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary);">
+                {{ p.supplier_name or 'Direct Purchase / Counter' }}
+              </div>
+            </td>
+            <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+              ₹{{ "%.2f"|format(p.total_amount) }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
+              ₹{{ "%.2f"|format(p.paid_amount) }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: {% if p.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %};">
+              ₹{{ "%.2f"|format(p.balance_amount) }}
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem;">
+                {{ p.payment_method }}
+              </span>
+            </td>
+            <td>
+              {% if p.status == 'received' or p.balance_amount == 0 %}
+                <span class="badge badge-paid">Received</span>
+              {% else %}
+                <span class="badge badge-partial">Credit / Dues</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="shopping-bag" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Inward Purchases Recorded Yet</p>
+              <p style="font-size: 0.85rem;">Record supplier purchase bills to automatically restock your inventory and track cost of goods sold.</p>
+              <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-primary btn-sm" style="margin-top: 14px;">
+                <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Inward Stock First Order
+              </a>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

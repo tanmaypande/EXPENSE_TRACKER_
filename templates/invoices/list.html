@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices & Billing History - {{ business.name }} | ShopLedger{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Invoices & Sales Ledger</h2>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Search and inspect generated sales invoices</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <a href="{{ url_for('reports.export_sales_csv') }}" class="btn-secondary">
+        <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+        <span>Export CSV</span>
+      </a>
+      <a href="{{ url_for('pos.index') }}" class="btn-primary" style="background: var(--accent-green);">
+        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+        <span>New Bill</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Search Filter Bar -->
+  <form method="GET" action="{{ url_for('invoices.list_invoices') }}" style="display: flex; gap: 10px; max-width: 450px;">
+    <div style="position: relative; flex: 1;">
+      <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-faint);"></i>
+      <input type="text" name="search" class="form-input" style="padding-left: 32px; height: 38px;" value="{{ search }}" placeholder="Search by Invoice #, Customer, or Phone...">
+    </div>
+    <button type="submit" class="btn-secondary" style="height: 38px;">Search</button>
+    {% if search %}
+      <a href="{{ url_for('invoices.list_invoices') }}" class="btn-secondary" style="height: 38px;">Clear</a>
+    {% endif %}
+  </form>
+
+  <!-- Invoices Table -->
+  <div class="transactions-section">
+    <div class="table-responsive">
+      <table class="fintech-table">
+        <thead>
+          <tr>
+            <th>Invoice No.</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Items</th>
+            <th>Date & Time</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th style="text-align: right;">Grand Total</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if invoices and invoices|length > 0 %}
+            {% for inv in invoices %}
+              <tr>
+                <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
+                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="color: var(--accent-blue);">{{ inv.invoice_number }}</a>
+                </td>
+                <td style="font-weight: 500;">{{ inv.customer_name or 'Walk-in Customer' }}</td>
+                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ inv.customer_phone or '-' }}</td>
+                <td>{{ inv.item_count }} items</td>
+                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ inv.created_at }}</td>
+                <td style="text-transform: capitalize;">{{ inv.payment_method }}</td>
+                <td>
+                  <span class="badge-status {{ 'badge-paid' if inv.payment_status == 'paid' else ('badge-partial' if inv.payment_status == 'partial' else 'badge-unpaid') }}">
+                    {{ inv.payment_status|capitalize }}
+                  </span>
+                </td>
+                <td style="text-align: right; font-weight: 700; color: var(--accent-green-text);">
+                  {{ business.currency }}{{ "{:,.2f}".format(inv.grand_total) }}
+                </td>
+                <td style="text-align: right;">
+                  <div class="actions-cell">
+                    <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" class="table-action-btn" title="View Bill">
+                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                    </a>
+                    <a href="{{ url_for('invoices.print_invoice', id=inv.id) }}" target="_blank" class="table-action-btn" title="Print Invoice">
+                      <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                No invoices found matching your criteria.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

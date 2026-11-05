@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Returns & Refunds - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Sales Returns & Credit Notes</h1>
+    <p class="page-subtitle">Process customer product returns, item restocking, and cash/credit note refunds.</p>
+  </div>
+  <div>
+    <a href="{{ url_for('returns.new_return') }}" class="btn btn-primary">
+      <i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i> Process New Return
+    </a>
+  </div>
+</div>
+
+<!-- Returns Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="history" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      All Sales Returns
+    </h3>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ returns|length }} Return Records</span>
+  </div>
+
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Return Note #</th>
+          <th>Original Invoice</th>
+          <th>Customer</th>
+          <th>Return Date</th>
+          <th>Reason</th>
+          <th>Refund Mode</th>
+          <th style="text-align: right;">Refund Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if returns %}
+          {% for r in returns %}
+          <tr>
+            <td>
+              <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary);">
+                RET-{{ "%04d"|format(r.id) }}
+              </span>
+            </td>
+            <td>
+              <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
+                {{ r.invoice_number }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary);">
+                {{ r.invoice_number }}
+              </div>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">
+              {{ r.created_at[:10] if r.created_at else '' }}
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">
+              {{ r.reason or 'Customer return' }}
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem;">
+                {{ r.refund_method }}
+              </span>
+            </td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-red); font-size: 0.95rem;">
+              ₹{{ "%.2f"|format(r.refund_amount) }}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="rotate-ccw" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Sales Returns Recorded</p>
+              <p style="font-size: 0.85rem;">When a customer brings back goods, search the original bill to process refund and optional stock replenishment.</p>
+              <a href="{{ url_for('returns.new_return') }}" class="btn btn-primary btn-sm" style="margin-top: 14px;">
+                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> Process Return
+              </a>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

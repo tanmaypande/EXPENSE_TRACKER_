@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice {{ sale.invoice_number }} - {{ business.name }} | ShopLedger{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+
+  <!-- Action Bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <a href="{{ url_for('invoices.list_invoices') }}" class="btn-secondary">
+      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+      <span>Back to Invoices</span>
+    </a>
+    <div style="display: flex; gap: 8px;">
+      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='thermal') }}" target="_blank" class="btn-secondary">
+        <i data-lucide="receipt" style="width: 14px; height: 14px;"></i>
+        <span>Thermal Slip (80mm)</span>
+      </a>
+      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='a4') }}" target="_blank" class="btn-primary" style="background: var(--accent-green);">
+        <i data-lucide="printer" style="width: 15px; height: 15px;"></i>
+        <span>Print Tax Invoice (A4)</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Invoice Container Card -->
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-sm);">
+    
+    <!-- Header Row -->
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+      <div>
+        <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">{{ sale.business_name }}</h2>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">{{ sale.business_address or 'Store Address' }}</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Phone: {{ sale.business_phone or '-' }} | Email: {{ sale.business_email or '-' }}</p>
+        {% if sale.business_gstin %}
+          <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-top: 2px;">GSTIN: {{ sale.business_gstin }}</p>
+        {% endif %}
+      </div>
+
+      <div style="text-align: right;">
+        <span style="font-size: 1.2rem; font-weight: 800; color: var(--accent-green-text); letter-spacing: 0.05em;">TAX INVOICE</span>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-top: 4px;">
+          {{ sale.invoice_number }}
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Date: {{ sale.created_at }}</div>
+        <div style="font-size: 0.78rem; color: var(--text-muted);">Billed By: {{ sale.cashier_name or 'Cashier' }}</div>
+      </div>
+    </div>
+
+    <!-- Bill To Details -->
+    <div style="display: flex; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border-color); font-size: 0.84rem;">
+      <div>
+        <div style="font-weight: 600; color: var(--text-faint); text-transform: uppercase; font-size: 0.72rem; margin-bottom: 4px;">Billed To</div>
+        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">{{ sale.customer_name or 'Walk-in Customer' }}</div>
+        {% if sale.customer_phone %}
+          <div style="color: var(--text-muted);">Phone: {{ sale.customer_phone }}</div>
+        {% endif %}
+      </div>
+      <div style="text-align: right;">
+        <div style="font-weight: 600; color: var(--text-faint); text-transform: uppercase; font-size: 0.72rem; margin-bottom: 4px;">Payment Info</div>
+        <div style="font-weight: 600; color: var(--text-main); text-transform: capitalize;">Method: {{ sale.payment_method }}</div>
+        <div>
+          Status: 
+          <span class="badge-status {{ 'badge-paid' if sale.payment_status == 'paid' else ('badge-partial' if sale.payment_status == 'partial' else 'badge-unpaid') }}">
+            {{ sale.payment_status|capitalize }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div style="padding: 16px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase;">
+            <th style="text-align: left; padding: 8px 0;">#</th>
+            <th style="text-align: left; padding: 8px;">Item Description</th>
+            <th style="text-align: right; padding: 8px;">Rate</th>
+            <th style="text-align: center; padding: 8px;">Qty</th>
+            {% if sale.tax_enabled %}
+              <th style="text-align: right; padding: 8px;">GST %</th>
+              <th style="text-align: right; padding: 8px;">Tax</th>
+            {% endif %}
+            <th style="text-align: right; padding: 8px 0;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for itm in items %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 0; color: var(--text-muted);">{{ loop.index }}</td>
+              <td style="padding: 10px 8px; font-weight: 600; color: var(--text-main);">
+                {{ itm.product_name }}
+                {% if itm.sku %}
+                  <span style="display: block; font-size: 0.7rem; color: var(--text-faint); font-weight: 400;">SKU: {{ itm.sku }}</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right; padding: 10px 8px;">{{ sale.currency }}{{ "{:,.2f}".format(itm.unit_price) }}</td>
+              <td style="text-align: center; padding: 10px 8px; font-weight: 600;">{{ itm.quantity }}</td>
+              {% if sale.tax_enabled %}
+                <td style="text-align: right; padding: 10px 8px; color: var(--text-muted);">{{ itm.tax_rate }}%</td>
+                <td style="text-align: right; padding: 10px 8px; color: var(--text-muted);">{{ sale.currency }}{{ "{:,.2f}".format(itm.tax_amount) }}</td>
+              {% endif %}
+              <td style="text-align: right; padding: 10px 0; font-weight: 700; color: var(--text-main);">
+                {{ sale.currency }}{{ "{:,.2f}".format(itm.total_amount) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Summary Box -->
+    <div style="display: flex; justify-content: flex-end; padding-top: 10px;">
+      <div style="width: 280px; display: flex; flex-direction: column; gap: 6px; font-size: 0.84rem;">
+        <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+          <span>Subtotal:</span>
+          <span style="color: var(--text-main); font-weight: 600;">{{ sale.currency }}{{ "{:,.2f}".format(sale.subtotal) }}</span>
+        </div>
+        {% if sale.discount_amount > 0 %}
+          <div style="display: flex; justify-content: space-between; color: var(--accent-green-text);">
+            <span>Discount:</span>
+            <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
+          </div>
+        {% endif %}
+        {% if sale.tax_enabled %}
+          <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+            <span>CGST (Central):</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.cgst_amount) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+            <span>SGST (State):</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.sgst_amount) }}</span>
+          </div>
+        {% endif %}
+        <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid var(--border-color); font-size: 1.15rem; font-weight: 800; color: var(--text-main);">
+          <span>Grand Total:</span>
+          <span style="color: var(--accent-green-text);">{{ sale.currency }}{{ "{:,.2f}".format(sale.grand_total) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+          <span>Amount Paid:</span>
+          <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.paid_amount) }}</span>
+        </div>
+        {% if sale.balance_amount > 0 %}
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: var(--accent-red-text);">
+            <span>Outstanding Balance:</span>
+            <span>{{ sale.currency }}{{ "{:,.2f}".format(sale.balance_amount) }}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Terms & Footer -->
+    <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+      <p>{{ sale.terms_conditions }}</p>
+      <p style="margin-top: 4px; font-weight: 600;">Authorized Signatory / Computer Generated Invoice</p>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Reports & Accounting P&L - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Financial Statements & Accounting Reports</h1>
+    <p class="page-subtitle">Commercial Profit & Loss statement based on actual COGS snapshots, GST tax summaries, and inventory valuation.</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('reports.export_sales_csv') }}" class="btn btn-primary">
+      <i data-lucide="download" style="width: 16px; height: 16px;"></i> Export Sales CSV
+    </a>
+  </div>
+</div>
+
+<!-- Date Range Filter Card -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
+  <form method="GET" action="{{ url_for('reports.index') }}" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Period:</label>
+      <input type="date" name="start_date" class="form-control" value="{{ start_date or '' }}" title="Start Date">
+      <span style="color: var(--text-muted); font-size: 0.85rem;">to</span>
+      <input type="date" name="end_date" class="form-control" value="{{ end_date or '' }}" title="End Date">
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+      <i data-lucide="filter" style="width: 15px; height: 15px;"></i> Apply Filter
+    </button>
+    {% if start_date or end_date %}
+      <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">Clear Filter</a>
+    {% endif %}
+
+    <div style="margin-left: auto; font-size: 0.82rem; color: var(--text-muted);">
+      {% if start_date or end_date %}
+        Showing custom period: {{ start_date or 'Start' }} to {{ end_date or 'Present' }}
+      {% else %}
+        Showing All-Time Accounting Records
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Primary Financial KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Gross Sales Revenue</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">₹{{ "%.2f"|format(pnl.gross_sales) }}</div>
+    <div class="kpi-meta">{{ pnl.total_invoices }} customer invoices</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Cost of Goods Sold (COGS)</span>
+      <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B;">
+        <i data-lucide="package" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: #F59E0B;">₹{{ "%.2f"|format(pnl.cogs) }}</div>
+    <div class="kpi-meta">Cost of inventory sold</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Operational Expenses</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red);">₹{{ "%.2f"|format(pnl.total_expenses) }}</div>
+    <div class="kpi-meta">Rent, wages & overheads</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %};">
+    <div class="kpi-header">
+      <span class="kpi-title">Net Commercial Profit</span>
+      <div class="kpi-icon" style="background: {% if pnl.net_profit >= 0 %}rgba(16, 185, 129, 0.12){% else %}rgba(239, 68, 68, 0.12){% endif %}; color: {% if pnl.net_profit >= 0 %}#10B981{% else %}#EF4444{% endif %};">
+        <i data-lucide="trending-up" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %};">
+      ₹{{ "%.2f"|format(pnl.net_profit) }}
+    </div>
+    <div class="kpi-meta">
+      Net Margin: <strong>{{ pnl.net_margin_pct }}%</strong>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  
+  <!-- Left Column: Detailed P&L Statement -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="file-spreadsheet" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+        Standard Profit & Loss Statement (P&L)
+      </h3>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Real DB Accounting</span>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <tbody>
+          <tr>
+            <td style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">Gross Revenue from Sales</td>
+            <td style="text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">
+              ₹{{ "%.2f"|format(pnl.gross_sales) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="color: var(--text-muted); padding-left: 28px;">Less: Sales Returns & Customer Refunds</td>
+            <td style="text-align: right; color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">
+              - ₹{{ "%.2f"|format(pnl.returns_total) }}
+            </td>
+          </tr>
+          <tr style="background: var(--bg-secondary);">
+            <td style="font-weight: 600; color: var(--text-primary);">Net Sales Turnover</td>
+            <td style="text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+              ₹{{ "%.2f"|format(pnl.net_sales) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="color: var(--text-muted); padding-left: 28px;">Less: GST Output Tax Liability Collected</td>
+            <td style="text-align: right; color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">
+              - ₹{{ "%.2f"|format(pnl.tax_collected) }}
+            </td>
+          </tr>
+          <tr style="background: var(--bg-secondary);">
+            <td style="font-weight: 600; color: var(--text-primary);">Net Operating Shop Revenue</td>
+            <td style="text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+              ₹{{ "%.2f"|format(pnl.operating_revenue) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="color: var(--text-muted); padding-left: 28px;">Less: Cost of Goods Sold (Purchase Cost of Inventory)</td>
+            <td style="text-align: right; color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">
+              - ₹{{ "%.2f"|format(pnl.cogs) }}
+            </td>
+          </tr>
+          <tr style="background: var(--bg-secondary);">
+            <td>
+              <div style="font-weight: 700; color: var(--text-primary);">Gross Operational Profit</div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Margin on Goods: {{ pnl.gross_margin_pct }}%</span>
+            </td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-green); font-size: 1rem;">
+              ₹{{ "%.2f"|format(pnl.gross_profit) }}
+            </td>
+          </tr>
+          <tr>
+            <td style="color: var(--text-muted); padding-left: 28px;">Less: Shop Operational Expenses (Rent, Wages, Bills)</td>
+            <td style="text-align: right; color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">
+              - ₹{{ "%.2f"|format(pnl.total_expenses) }}
+            </td>
+          </tr>
+          <tr style="background: rgba(16, 185, 129, 0.08); border-top: 2px solid var(--accent-green);">
+            <td style="padding: 16px 20px;">
+              <div style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary);">Net Operating Profit</div>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">After COGS, Taxes & Operational Overheads</span>
+            </td>
+            <td style="text-align: right; padding: 16px 20px; font-size: 1.35rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %};">
+              ₹{{ "%.2f"|format(pnl.net_profit) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right Column: GST & Stock Valuation -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    
+    <!-- GST Tax Summary Card -->
+    <div class="card">
+      <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="landmark" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+        GST Tax Breakdown
+      </h3>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-muted);">Taxable Sales Turnover:</span>
+          <span style="font-weight: 600; font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(gst.taxable_turnover) }}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-muted);">Central GST (CGST):</span>
+          <span style="font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">₹{{ "%.2f"|format(gst.cgst) }}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-muted);">State GST (SGST):</span>
+          <span style="font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">₹{{ "%.2f"|format(gst.sgst) }}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+          <span style="font-weight: 700; color: var(--text-primary);">Total GST Liability:</span>
+          <span style="font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #F59E0B; font-size: 1.1rem;">₹{{ "%.2f"|format(gst.total_tax) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Stock Valuation Card -->
+    <div class="card">
+      <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="boxes" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+        Current Stock Valuation
+      </h3>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-muted);">Stock at Cost (Wholesale Asset):</span>
+          <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">₹{{ "%.2f"|format(total_cost_val) }}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-muted);">Stock at Retail (Selling Value):</span>
+          <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">₹{{ "%.2f"|format(total_retail_val) }}</span>
+        </div>
+
+        {% set potential_margin = total_retail_val - total_cost_val %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+          <span style="font-weight: 600; color: var(--text-muted);">Unrealized Retail Margin:</span>
+          <span style="font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #3B82F6;">₹{{ "%.2f"|format(potential_margin) }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ business.name }} | ShopLedger{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- Top Hero / Quick Actions Row -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg-surface); padding: 18px 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">{{ business.name }}</h2>
+        <span class="category-pill" style="text-transform: capitalize;">{{ business.category }} Store</span>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">
+        Daily commercial overview & live financial vitals
+      </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="{{ url_for('inventory.add_product') }}" class="btn-secondary">
+        <i data-lucide="package-plus" style="width: 15px; height: 15px;"></i>
+        <span>Add Product</span>
+      </a>
+      <a href="{{ url_for('pos.index') }}" class="btn-primary" style="background: var(--accent-green); padding: 0 16px;">
+        <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
+        <span>Launch POS Billing</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Primary Financial KPI Cards -->
+  <section class="metrics-grid">
+    <!-- Today's Sales -->
+    <div class="metric-card">
+      <div class="metric-card-top">
+        <span class="metric-label">Today's Sales</span>
+        <div class="metric-icon-box green">
+          <i data-lucide="trending-up" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+      <div class="metric-value">{{ business.currency }}{{ "{:,.2f}".format(metrics.today_sales) }}</div>
+      <div class="metric-footer">
+        <span>{{ metrics.today_tx_count }} bills generated today</span>
+      </div>
+    </div>
+
+    <!-- Today's Expenses -->
+    <div class="metric-card">
+      <div class="metric-card-top">
+        <span class="metric-label">Today's Expenses</span>
+        <div class="metric-icon-box red">
+          <i data-lucide="wallet" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+      <div class="metric-value">{{ business.currency }}{{ "{:,.2f}".format(metrics.today_expense) }}</div>
+      <div class="metric-footer">
+        <span>Operational store expenses</span>
+      </div>
+    </div>
+
+    <!-- Today's Net Profit -->
+    <div class="metric-card">
+      <div class="metric-card-top">
+        <span class="metric-label">Today's Net Profit</span>
+        <div class="metric-icon-box green">
+          <i data-lucide="award" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+      <div class="metric-value" style="color: {{ 'var(--accent-green-text)' if metrics.today_net_profit >= 0 else 'var(--accent-red-text)' }};">
+        {{ business.currency }}{{ "{:,.2f}".format(metrics.today_net_profit) }}
+      </div>
+      <div class="metric-footer">
+        <span>Net margin after COGS & expenses</span>
+      </div>
+    </div>
+
+    <!-- Customer Credit / Receivables -->
+    <div class="metric-card">
+      <div class="metric-card-top">
+        <span class="metric-label">Pending Receivables (Udhar)</span>
+        <div class="metric-icon-box blue">
+          <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+      <div class="metric-value">{{ business.currency }}{{ "{:,.2f}".format(metrics.total_receivable) }}</div>
+      <div class="metric-footer">
+        <a href="{{ url_for('customers.index') }}" style="color: var(--accent-blue); font-weight: 500;">View customer ledgers →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Secondary Operational Indicators Row -->
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
+    <!-- Inventory Stock Value -->
+    <div style="background: var(--bg-surface); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Total Inventory Value (Retail)</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">
+          {{ business.currency }}{{ "{:,.2f}".format(metrics.total_inventory_retail) }}
+        </div>
+      </div>
+      <i data-lucide="layers" style="color: var(--text-faint); width: 22px; height: 22px;"></i>
+    </div>
+
+    <!-- Total Products -->
+    <div style="background: var(--bg-surface); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Active Products in Catalog</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">
+          {{ metrics.total_products }} Products
+        </div>
+      </div>
+      <i data-lucide="package" style="color: var(--text-faint); width: 22px; height: 22px;"></i>
+    </div>
+
+    <!-- Low Stock Alert -->
+    <div style="background: var(--bg-surface); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Low-Stock Attention Needed</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: {{ 'var(--accent-red-text)' if metrics.low_stock_count > 0 else 'var(--text-main)' }}; margin-top: 2px;">
+          {{ metrics.low_stock_count }} Items Low
+        </div>
+      </div>
+      <a href="{{ url_for('inventory.list_products', low_stock='1') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+        Review
+      </a>
+    </div>
+  </div>
+
+  <!-- Analytics & Top Sellers Grid -->
+  <section class="analytics-grid">
+    <!-- 7-Day Sales Trend -->
+    <div class="chart-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h3 class="chart-title">7-Day Sales Revenue</h3>
+          <span class="chart-subtitle">Daily billed totals</span>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="salesTrendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Best Selling Items -->
+    <div class="chart-card">
+      <div>
+        <h3 class="chart-title">Top Selling Products</h3>
+        <span class="chart-subtitle">By quantity sold</span>
+      </div>
+      <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+        {% if metrics.top_products and metrics.top_products|length > 0 %}
+          {% for tp in metrics.top_products %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg-surface-hover); border-radius: var(--radius-sm);">
+              <div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">{{ tp.product_name }}</div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ tp.total_qty }} units sold</div>
+              </div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green-text);">
+                {{ business.currency }}{{ "{:,.2f}".format(tp.total_revenue) }}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="chart-empty" style="padding: 30px 0;">
+            <i data-lucide="shopping-cart" style="width: 28px; height: 28px; color: var(--text-faint);"></i>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 6px;">No sales generated yet. Start billing in POS.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Invoices Table -->
+  <section class="transactions-section">
+    <div class="transactions-header">
+      <div>
+        <h3 class="section-title">Recent Invoices</h3>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Latest sales transactions</span>
+      </div>
+      <a href="{{ url_for('invoices.list_invoices') }}" class="btn-secondary" style="font-size: 0.78rem;">
+        View All Invoices →
+      </a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="fintech-table">
+        <thead>
+          <tr>
+            <th>Invoice No.</th>
+            <th>Customer</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Date & Time</th>
+            <th style="text-align: right;">Grand Total</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if metrics.recent_invoices and metrics.recent_invoices|length > 0 %}
+            {% for inv in metrics.recent_invoices %}
+              <tr>
+                <td style="font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
+                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="color: var(--accent-blue);">{{ inv.invoice_number }}</a>
+                </td>
+                <td>{{ inv.customer_name or 'Walk-in' }}</td>
+                <td style="text-transform: capitalize;">{{ inv.payment_method }}</td>
+                <td>
+                  <span class="badge-status {{ 'badge-paid' if inv.payment_status == 'paid' else ('badge-partial' if inv.payment_status == 'partial' else 'badge-unpaid') }}">
+                    {{ inv.payment_status|capitalize }}
+                  </span>
+                </td>
+                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ inv.created_at }}</td>
+                <td style="text-align: right; font-weight: 700; color: var(--accent-green-text);">
+                  {{ business.currency }}{{ "{:,.2f}".format(inv.grand_total) }}
+                </td>
+                <td style="text-align: right;">
+                  <a href="{{ url_for('invoices.print_invoice', id=inv.id) }}" target="_blank" class="table-action-btn" title="Print Invoice">
+                    <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                No invoices recorded yet. Click <a href="{{ url_for('pos.index') }}" style="color: var(--accent-green-text); font-weight: 600;">POS Billing</a> to create your first bill.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Render 7-day sales chart
+  document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById("salesTrendChart");
+    if (!ctx) return;
+
+    const labels = {{ metrics.sales_labels_7d|tojson }};
+    const values = {{ metrics.sales_values_7d|tojson }};
+
+    const isDark = (document.documentElement.getAttribute("data-theme") || "dark") === "dark";
+    const textColor = isDark ? "#94A3B8" : "#64748B";
+    const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Daily Revenue ({{ business.currency }})",
+          data: values,
+          backgroundColor: "#10B981",
+          borderRadius: 4,
+          maxBarThickness: 32
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return "Revenue: {{ business.currency }}" + context.raw.toLocaleString("en-IN");
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: textColor, font: { family: "Inter", size: 11 } }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { family: "Inter", size: 11 },
+              callback: function(v) { return "{{ business.currency }}" + v.toLocaleString("en-IN"); }
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

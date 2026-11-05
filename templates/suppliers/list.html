@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers Directory - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Suppliers & Vendors Directory</h1>
+    <p class="page-subtitle">Manage wholesale suppliers, distributor contacts, and inward purchasing relationships.</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-secondary">
+      <i data-lucide="shopping-bag" style="width: 16px; height: 16px;"></i> Inward Stock / PO
+    </a>
+    <button class="btn btn-primary" onclick="openAddSupplierModal()">
+      <i data-lucide="truck" style="width: 16px; height: 16px;"></i> Add Supplier
+    </button>
+  </div>
+</div>
+
+<!-- KPI Grid -->
+{% set total_payable = namespace(val=0) %}
+{% for s in suppliers %}
+  {% set s_bal = (s.outstanding_balance or 0.0)|float %}
+  {% if s_bal > 0 %}
+    {% set total_payable.val = total_payable.val + s_bal %}
+  {% endif %}
+{% endfor %}
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Active Suppliers</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="truck" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ suppliers|length }}</div>
+    <div class="kpi-meta">Verified merchant vendors</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Accounts Payable (Supplier Dues)</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red);">₹{{ "%.2f"|format(total_payable.val) }}</div>
+    <div class="kpi-meta">Pending outward payments</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Inward Purchases</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="package-check" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green);">
+      <a href="{{ url_for('suppliers.list_purchases') }}" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+        View Bills <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+      </a>
+    </div>
+    <div class="kpi-meta">Manage purchase invoices</div>
+  </div>
+</div>
+
+<!-- Supplier Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Supplier Company</th>
+          <th>Contact Person</th>
+          <th>Phone / Email</th>
+          <th>GSTIN</th>
+          <th>Payable Balance</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if suppliers %}
+          {% for s in suppliers %}
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--bg-secondary); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #3B82F6;">
+                  {{ s.name[0]|upper }}
+                </div>
+                <div>
+                  {{ s.name }}
+                  {% if s.address %}
+                    <span style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">{{ s.address }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <span style="font-size: 0.88rem; color: var(--text-primary);">{{ s.contact_person or '—' }}</span>
+            </td>
+            <td style="font-size: 0.85rem;">
+              <div style="font-family: 'JetBrains Mono', monospace; color: var(--text-primary);">{{ s.phone or '—' }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">{{ s.email or '' }}</div>
+            </td>
+            <td>
+              {% if s.gstin %}
+                <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace;">
+                  {{ s.gstin }}
+                </span>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 0.8rem;">Unregistered</span>
+              {% endif %}
+            </td>
+            <td>
+              {% set s_bal = (s.outstanding_balance or 0.0)|float %}
+              {% if s_bal > 0 %}
+                <span class="badge badge-unpaid" style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; padding: 4px 8px;">
+                  ₹{{ "%.2f"|format(s_bal) }} Due
+                </span>
+              {% else %}
+                <span class="badge badge-paid" style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; padding: 4px 8px;">
+                  ₹0.00 (Clear)
+                </span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-secondary btn-sm" title="Create Purchase Order">
+                <i data-lucide="shopping-cart" style="width: 14px; height: 14px;"></i> Inward Stock
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="truck" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Suppliers Added Yet</p>
+              <p style="font-size: 0.85rem;">Register wholesale distributors and suppliers to track inward deliveries and purchase bills.</p>
+              <button class="btn btn-primary btn-sm" onclick="openAddSupplierModal()" style="margin-top: 14px;">
+                <i data-lucide="truck" style="width: 14px; height: 14px;"></i> Add First Supplier
+              </button>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add Supplier -->
+<div class="modal-backdrop" id="addSupplierModal" style="display: none;">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="truck" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
+        Add New Supplier
+      </h3>
+      <button class="btn-close" onclick="closeAddSupplierModal()">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers.add_supplier') }}">
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="sup_name">Supplier / Firm Name *</label>
+          <input type="text" id="sup_name" name="name" class="form-control" required placeholder="e.g. Metro Cash & Carry, ABC Distributors">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sup_contact">Contact Person (Optional)</label>
+          <input type="text" id="sup_contact" name="contact_person" class="form-control" placeholder="e.g. Manish Sharma (Manager)">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="sup_phone">Phone Number</label>
+            <input type="text" id="sup_phone" name="phone" class="form-control" placeholder="e.g. 9811223344">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sup_gstin">Supplier GSTIN</label>
+            <input type="text" id="sup_gstin" name="gstin" class="form-control" placeholder="27AAACB1234F1Z8">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sup_email">Email Address</label>
+          <input type="email" id="sup_email" name="email" class="form-control" placeholder="orders@supplier.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sup_address">Supplier Address / Depot</label>
+          <textarea id="sup_address" name="address" class="form-control" rows="2" placeholder="Warehouse address or wholesale market stall"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeAddSupplierModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openAddSupplierModal() {
+    document.getElementById('addSupplierModal').style.display = 'flex';
+  }
+  function closeAddSupplierModal() {
+    document.getElementById('addSupplierModal').style.display = 'none';
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Directory & Khata Ledger - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Customer Directory & Credit Khata</h1>
+    <p class="page-subtitle">Track customer profiles, purchase histories, and outstanding udhar/credit balances.</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-primary" onclick="openAddCustomerModal()">
+      <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i> Add Customer
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+{% set total_due = namespace(val=0, count=0) %}
+{% for c in customers %}
+  {% set c_bal = (c.outstanding_balance or 0.0)|float %}
+  {% if c_bal > 0 %}
+    {% set total_due.val = total_due.val + c_bal %}
+    {% set total_due.count = total_due.count + 1 %}
+  {% endif %}
+{% endfor %}
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Registered Customers</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ customers|length }}</div>
+    <div class="kpi-meta">Active client database</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Outstanding Dues (Khata)</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red);">₹{{ "%.2f"|format(total_due.val) }}</div>
+    <div class="kpi-meta">Receivable from {{ total_due.count }} customers</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Clean Accounts</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green);">{{ customers|length - total_due.count }}</div>
+    <div class="kpi-meta">Zero pending balances</div>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 20px;">
+  <form method="GET" action="{{ url_for('customers.index') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    <div style="position: relative; flex: 1; min-width: 240px;">
+      <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
+      <input type="text" name="search" class="form-control" style="padding-left: 36px;" 
+             value="{{ search }}" placeholder="Search customer by name or phone number...">
+    </div>
+    <button type="submit" class="btn btn-secondary">
+      <i data-lucide="search" style="width: 15px; height: 15px;"></i> Filter
+    </button>
+    {% if search %}
+      <a href="{{ url_for('customers.index') }}" class="btn btn-secondary">Reset</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Customer List Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Customer Name</th>
+          <th>Contact Phone</th>
+          <th>Email / GSTIN</th>
+          <th>Khata / Balance Due</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if customers %}
+          {% for c in customers %}
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: var(--radius-full); background: var(--bg-secondary); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: var(--accent-green);">
+                  {{ c.name[0]|upper }}
+                </div>
+                <div>
+                  {{ c.name }}
+                  {% if c.address %}
+                    <span style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">{{ c.address }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; color: var(--text-primary);">
+                {{ c.phone or '—' }}
+              </span>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">
+              <div>{{ c.email or '—' }}</div>
+              {% if c.gstin %}
+                <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
+                  GST: {{ c.gstin }}
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% set c_bal = (c.outstanding_balance or 0.0)|float %}
+              {% if c_bal > 0 %}
+                <span class="badge badge-unpaid" style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; padding: 4px 8px;">
+                  ₹{{ "%.2f"|format(c_bal) }} Due
+                </span>
+              {% else %}
+                <span class="badge badge-paid" style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; padding: 4px 8px;">
+                  ₹0.00 (Clear)
+                </span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 8px;">
+                <a href="{{ url_for('customers.ledger', id=c.id) }}" class="btn btn-secondary btn-sm" title="View Customer Ledger">
+                  <i data-lucide="book-open" style="width: 14px; height: 14px;"></i> Ledger
+                </a>
+                {% if c_bal > 0 %}
+                  <button class="btn btn-primary btn-sm" onclick="openPaymentModal({{ c.id }}, '{{ c.name }}', {{ c_bal }})" title="Record Payment">
+                    <i data-lucide="hand-coins" style="width: 14px; height: 14px;"></i> Settle
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="users" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Customers Found</p>
+              <p style="font-size: 0.85rem;">Add customers directly or record customer details during POS billing checkout.</p>
+              <button class="btn btn-primary btn-sm" onclick="openAddCustomerModal()" style="margin-top: 14px;">
+                <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i> Add First Customer
+              </button>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add Customer -->
+<div class="modal-backdrop" id="addCustomerModal" style="display: none;">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="user-plus" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
+        Add New Customer
+      </h3>
+      <button class="btn-close" onclick="closeAddCustomerModal()">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('customers.add') }}">
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="cust_name">Customer Full Name *</label>
+          <input type="text" id="cust_name" name="name" class="form-control" required placeholder="e.g. Rahul Sharma">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_phone">Phone Number *</label>
+          <input type="text" id="cust_phone" name="phone" class="form-control" required placeholder="e.g. 9876543210">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Used for matching invoices and credit alerts</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_email">Email Address (Optional)</label>
+          <input type="email" id="cust_email" name="email" class="form-control" placeholder="rahul@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_gstin">GSTIN (Optional for B2B Customers)</label>
+          <input type="text" id="cust_gstin" name="gstin" class="form-control" placeholder="27ABCDE1234F1Z5">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cust_address">Address / City</label>
+          <textarea id="cust_address" name="address" class="form-control" rows="2" placeholder="Local address or shop location"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeAddCustomerModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Customer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Record Payment -->
+<div class="modal-backdrop" id="payModal" style="display: none;">
+  <div class="modal-content" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="hand-coins" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
+        Record Khata Repayment
+      </h3>
+      <button class="btn-close" onclick="closePaymentModal()">&times;</button>
+    </div>
+    <form id="payForm" method="POST" action="">
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Customer: <strong id="payCustomerName" style="color: var(--text-primary);"></strong></div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Current Outstanding: <strong id="payDueAmount" style="color: var(--accent-red);"></strong></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pay_amount">Payment Amount (₹) *</label>
+          <input type="number" step="0.01" min="0.01" id="pay_amount" name="amount" class="form-control" required placeholder="0.00">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pay_method">Payment Mode</label>
+          <select id="pay_method" name="payment_method" class="form-control">
+            <option value="cash">Cash</option>
+            <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
+            <option value="card">Card (Debit / Credit)</option>
+            <option value="bank">Bank Transfer / NEFT</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pay_notes">Notes / Reference (Optional)</label>
+          <input type="text" id="pay_notes" name="notes" class="form-control" placeholder="e.g. Paid in full via GPay">
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openAddCustomerModal() {
+    document.getElementById('addCustomerModal').style.display = 'flex';
+  }
+  function closeAddCustomerModal() {
+    document.getElementById('addCustomerModal').style.display = 'none';
+  }
+
+  function openPaymentModal(id, name, due) {
+    document.getElementById('payForm').action = `/customers/${id}/pay`;
+    document.getElementById('payCustomerName').textContent = name;
+    document.getElementById('payDueAmount').textContent = `₹${parseFloat(due).toFixed(2)}`;
+    document.getElementById('pay_amount').value = parseFloat(due).toFixed(2);
+    document.getElementById('payModal').style.display = 'flex';
+  }
+  function closePaymentModal() {
+    document.getElementById('payModal').style.display = 'none';
+  }
+</script>
+{% endblock %}

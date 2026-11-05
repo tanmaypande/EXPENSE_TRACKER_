@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Business Expenses - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Operational Expenses & Cash Outflow</h1>
+    <p class="page-subtitle">Track shop overheads, rent, staff wages, utilities, and daily petty cash expenditures.</p>
+  </div>
+  <div>
+    <button class="btn btn-primary" onclick="openExpenseModal()">
+      <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i> Record Expense
+    </button>
+  </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Filtered Expenses Total</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red);">₹{{ "%.2f"|format(total_amount) }}</div>
+    <div class="kpi-meta">Total outflow for selected period</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Expense Entries</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ expenses|length }}</div>
+    <div class="kpi-meta">Recorded transactions</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Active Categories</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ categories|length }}</div>
+    <div class="kpi-meta">Standard commercial heads</div>
+  </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 20px;">
+  <form method="GET" action="{{ url_for('expenses.index') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+      <select name="category" class="form-control">
+        <option value="">-- All Categories --</option>
+        {% for cat in categories %}
+          <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}" title="From Date">
+      <span style="color: var(--text-muted); font-size: 0.85rem;">to</span>
+      <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}" title="To Date">
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+      <i data-lucide="filter" style="width: 15px; height: 15px;"></i> Filter
+    </button>
+    
+    {% if selected_category or request.args.get('start_date') or request.args.get('end_date') %}
+      <a href="{{ url_for('expenses.index') }}" class="btn btn-secondary">Reset</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Expenses Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Description / Note</th>
+          <th>Payment Mode</th>
+          <th style="text-align: right;">Amount (₹)</th>
+          <th style="width: 50px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if expenses %}
+          {% for exp in expenses %}
+          <tr>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">
+              {{ exp.date }}
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-weight: 600; color: var(--text-primary);">
+                {{ exp.category }}
+              </span>
+            </td>
+            <td>
+              <span style="color: var(--text-primary); font-size: 0.9rem;">
+                {{ exp.description or '—' }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem;">
+                {{ exp.payment_method }}
+              </span>
+            </td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-red); font-size: 0.95rem;">
+              ₹{{ "%.2f"|format(exp.amount) }}
+            </td>
+            <td style="text-align: center;">
+              <a href="{{ url_for('expenses.remove', id=exp.id) }}" class="btn btn-secondary btn-sm" onclick="return confirm('Delete this expense entry?')" style="padding: 4px 6px; color: var(--accent-red);" title="Delete Entry">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="wallet" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Expenses Recorded</p>
+              <p style="font-size: 0.85rem;">Keep your shop accounts healthy by tracking daily overheads and staff expenses.</p>
+              <button class="btn btn-primary btn-sm" onclick="openExpenseModal()" style="margin-top: 14px;">
+                <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Record First Expense
+              </button>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Record Expense -->
+<div class="modal-backdrop" id="expenseModal" style="display: none;">
+  <div class="modal-content" style="max-width: 460px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="wallet" style="width: 20px; height: 20px; color: var(--accent-red);"></i>
+        Record Business Expense
+      </h3>
+      <button class="btn-close" onclick="closeExpenseModal()">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('expenses.add') }}">
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        
+        <div class="form-group">
+          <label class="form-label" for="exp_category">Expense Category *</label>
+          <select id="exp_category" name="category" class="form-control" required>
+            {% for cat in categories %}
+              <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="exp_amount">Amount (₹) *</label>
+            <input type="number" step="0.01" min="0.01" id="exp_amount" name="amount" class="form-control" required placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp_date">Expense Date</label>
+            <input type="date" id="exp_date" name="date" class="form-control" value="{{ today }}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="exp_method">Payment Method</label>
+          <select id="exp_method" name="payment_method" class="form-control">
+            <option value="cash">Cash / Petty Cash</option>
+            <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
+            <option value="bank">Bank Transfer / Cheque</option>
+            <option value="card">Card (Debit / Credit)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="exp_desc">Description / Purpose</label>
+          <input type="text" id="exp_desc" name="description" class="form-control" placeholder="e.g. Monthly shop electricity bill, Tea & snacks for staff">
+        </div>
+
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeExpenseModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background: var(--accent-red); border-color: var(--accent-red);">Save Expense</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openExpenseModal() {
+    document.getElementById('expenseModal').style.display = 'flex';
+  }
+  function closeExpenseModal() {
+    document.getElementById('expenseModal').style.display = 'none';
+  }
+</script>
+{% endblock %}

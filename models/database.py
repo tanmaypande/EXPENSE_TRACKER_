@@ -1,0 +1,332 @@
+import os
+import sys
+import sqlite3
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "expense.db")
+
+def get_db_connection():
+    """Returns a thread-safe connection to the SQLite database with row factory and foreign keys enabled."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
+def init_db():
+    """Initializes and migrates the normalized ShopLedger schema while preserving existing data."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 1. USERS TABLE (Preserved & extended)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT,
+        role TEXT DEFAULT 'owner',
+        business_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 2. BUSINESSES TABLE (Shop profiles)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS businesses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        category TEXT DEFAULT 'retail',
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        gstin TEXT,
+        currency TEXT DEFAULT '₹',
+        invoice_prefix TEXT DEFAULT 'INV-',
+        tax_enabled INTEGER DEFAULT 1,
+        default_tax_rate REAL DEFAULT 0.0,
+        terms_conditions TEXT DEFAULT 'Thank you for your business! Goods once sold cannot be returned without bill.',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 3. CATEGORIES TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 4. PRODUCTS TABLE (Inventory)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        sku TEXT,
+        barcode TEXT,
+        category_id INTEGER,
+        brand TEXT,
+        purchase_price REAL NOT NULL DEFAULT 0.0,
+        selling_price REAL NOT NULL DEFAULT 0.0,
+        tax_rate REAL DEFAULT 0.0,
+        stock_quantity REAL DEFAULT 0.0,
+        min_stock_level REAL DEFAULT 5.0,
+        unit TEXT DEFAULT 'pcs',
+        description TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    )
+    """)
+
+    # 5. STOCK MOVEMENTS TABLE (Audit Trail)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS stock_movements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        change_qty REAL NOT NULL,
+        new_stock REAL NOT NULL,
+        reason TEXT NOT NULL,
+        reference_id TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 6. CUSTOMERS TABLE (CRM)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        gstin TEXT,
+        total_spent REAL DEFAULT 0.0,
+        outstanding_balance REAL DEFAULT 0.0,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 7. SUPPLIERS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS suppliers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        contact_person TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        gstin TEXT,
+        total_purchases REAL DEFAULT 0.0,
+        outstanding_balance REAL DEFAULT 0.0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 8. SALES / INVOICES TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        invoice_number TEXT UNIQUE NOT NULL,
+        customer_id INTEGER,
+        customer_name TEXT,
+        customer_phone TEXT,
+        subtotal REAL NOT NULL DEFAULT 0.0,
+        discount_amount REAL DEFAULT 0.0,
+        tax_amount REAL DEFAULT 0.0,
+        cgst_amount REAL DEFAULT 0.0,
+        sgst_amount REAL DEFAULT 0.0,
+        grand_total REAL NOT NULL,
+        paid_amount REAL NOT NULL,
+        balance_amount REAL DEFAULT 0.0,
+        payment_method TEXT DEFAULT 'cash',
+        payment_status TEXT DEFAULT 'paid',
+        notes TEXT,
+        status TEXT DEFAULT 'completed',
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+    """)
+
+    # 9. SALE ITEMS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS sale_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sale_id INTEGER NOT NULL,
+        product_id INTEGER,
+        product_name TEXT NOT NULL,
+        sku TEXT,
+        unit_price REAL NOT NULL,
+        purchase_price REAL DEFAULT 0.0,
+        quantity REAL NOT NULL,
+        discount_amount REAL DEFAULT 0.0,
+        tax_rate REAL DEFAULT 0.0,
+        tax_amount REAL DEFAULT 0.0,
+        total_amount REAL NOT NULL,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+    )
+    """)
+
+    # 10. PURCHASES TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS purchases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        purchase_number TEXT NOT NULL,
+        supplier_id INTEGER,
+        supplier_name TEXT,
+        total_amount REAL NOT NULL,
+        paid_amount REAL DEFAULT 0.0,
+        payment_method TEXT DEFAULT 'cash',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
+    )
+    """)
+
+    # 11. PURCHASE ITEMS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS purchase_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchase_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        purchase_price REAL NOT NULL,
+        total_amount REAL NOT NULL,
+        FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 12. RETURNS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS returns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        sale_id INTEGER NOT NULL,
+        invoice_number TEXT NOT NULL,
+        refund_amount REAL NOT NULL,
+        refund_method TEXT DEFAULT 'cash',
+        reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 13. RETURN ITEMS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS return_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        return_id INTEGER NOT NULL,
+        product_id INTEGER,
+        product_name TEXT,
+        quantity REAL NOT NULL,
+        refund_unit_price REAL NOT NULL,
+        total_refund REAL NOT NULL,
+        restock INTEGER DEFAULT 1,
+        FOREIGN KEY (return_id) REFERENCES returns(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+    )
+    """)
+
+    # 14. EXPENSES TABLE (Commercial Business Expenses)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        description TEXT,
+        payment_method TEXT DEFAULT 'cash',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 15. CUSTOMER PAYMENTS TABLE (Credit Settlement)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS customer_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        customer_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        payment_method TEXT DEFAULT 'cash',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 16. LEGACY RECORD TABLE PRESERVATION
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS record (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount REAL NOT NULL,
+        description TEXT,
+        type TEXT DEFAULT 'expense',
+        business_id INTEGER,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+
+    # Ensure backward-compatible columns exist on users and record
+    cur.execute("PRAGMA table_info(users)")
+    user_cols = [r["name"] for r in cur.fetchall()]
+    if "name" not in user_cols:
+        try: cur.execute("ALTER TABLE users ADD COLUMN name TEXT")
+        except Exception: pass
+    if "role" not in user_cols:
+        try: cur.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'owner'")
+        except Exception: pass
+    if "business_id" not in user_cols:
+        try: cur.execute("ALTER TABLE users ADD COLUMN business_id INTEGER")
+        except Exception: pass
+
+    cur.execute("PRAGMA table_info(record)")
+    rec_cols = [r["name"] for r in cur.fetchall()]
+    if "business_id" not in rec_cols:
+        try: cur.execute("ALTER TABLE record ADD COLUMN business_id INTEGER")
+        except Exception: pass
+
+    # Create helpful indexes for performance
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_products_business ON products(business_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sales_business ON sales(business_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sales_invoice ON sales(invoice_number)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_expenses_business ON expenses(business_id)")
+
+    conn.commit()
+    conn.close()
+    print("[DB] ShopLedger commercial database initialized successfully.")
+
+if __name__ == "__main__":
+    init_db()

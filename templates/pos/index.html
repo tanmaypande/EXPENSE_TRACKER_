@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}POS Billing - {{ business.name }} | ShopLedger{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pos-terminal-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 16px;
+    height: calc(100vh - 120px);
+    min-height: 600px;
+  }
+  .pos-card-pane {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+  }
+  .product-tile {
+    background: var(--bg-surface-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .product-tile:hover {
+    border-color: var(--accent-green);
+    transform: translateY(-2px);
+  }
+  .product-tile:active {
+    transform: translateY(0);
+  }
+  .cart-item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 30px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .qty-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface-hover);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .payment-method-btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    padding: 8px 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+  }
+  .payment-method-btn.active {
+    background: var(--accent-green-bg);
+    border-color: var(--accent-green);
+    color: var(--accent-green-text);
+  }
+
+  @media (max-width: 992px) {
+    .pos-terminal-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .pos-card-pane {
+      height: 550px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-terminal-grid">
+  
+  <!-- LEFT PANE: PRODUCT SEARCH & CATALOG -->
+  <div class="pos-card-pane">
+    <!-- Search Bar -->
+    <div style="padding: 14px 16px; border-bottom: 1px solid var(--border-color); display: flex; gap: 10px; align-items: center;">
+      <div style="position: relative; flex: 1;">
+        <i data-lucide="scan-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-faint);"></i>
+        <input type="text" id="pos-search-input" class="form-input" style="padding-left: 38px; height: 42px; font-size: 0.92rem;" placeholder="Scan Barcode or type Product / SKU (F2)..." autofocus>
+      </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div style="padding: 8px 16px; border-bottom: 1px solid var(--border-color); display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;">
+      <button class="quick-pill selected pos-cat-btn" data-cat-id="">All Items</button>
+      {% for cat in categories %}
+        <button class="quick-pill pos-cat-btn" data-cat-id="{{ cat.id }}">{{ cat.name }}</button>
+      {% endfor %}
+    </div>
+
+    <!-- Products Grid -->
+    <div id="pos-product-grid" style="flex: 1; overflow-y: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-content: start;">
+      {% for p in products %}
+        <div class="product-tile" 
+             data-id="{{ p.id }}" 
+             data-name="{{ p.name }}" 
+             data-price="{{ p.selling_price }}" 
+             data-cost="{{ p.purchase_price }}"
+             data-tax="{{ p.tax_rate }}"
+             data-sku="{{ p.sku }}"
+             data-stock="{{ p.stock_quantity }}">
+          <div>
+            <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main); line-height: 1.3;">{{ p.name }}</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">{{ p.sku or 'No SKU' }}</div>
+          </div>
+          <div style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-weight: 700; font-size: 0.95rem; color: var(--accent-green-text);">
+              {{ business.currency }}{{ "{:,.2f}".format(p.selling_price) }}
+            </span>
+            <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: var(--bg-surface); color: {{ 'var(--accent-red-text)' if p.stock_quantity <= p.min_stock_level else 'var(--text-faint)' }};">
+              Stock: {{ p.stock_quantity }}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RIGHT PANE: BILLING CART & CHECKOUT -->
+  <div class="pos-card-pane">
+    
+    <!-- Customer Header -->
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg-surface-hover);">
+      <div style="flex: 1; display: flex; gap: 8px;">
+        <input type="text" id="pos-cust-name" class="form-input" style="height: 34px; font-size: 0.82rem;" placeholder="Customer Name (Optional)">
+        <input type="tel" id="pos-cust-phone" class="form-input" style="height: 34px; font-size: 0.82rem; width: 140px;" placeholder="Phone (e.g. 9876543210)">
+      </div>
+      <button id="pos-clear-cart" class="btn-secondary" style="height: 34px; padding: 0 8px;" title="Clear Cart">
+        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+      </button>
+    </div>
+
+    <!-- Cart Column Titles -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 30px; gap: 8px; padding: 8px 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border-color); background: var(--bg-input);">
+      <span>Item</span>
+      <span style="text-align: center;">Qty</span>
+      <span style="text-align: right;">Total</span>
+      <span></span>
+    </div>
+
+    <!-- Cart Items Scroll Area -->
+    <div id="pos-cart-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column;">
+      <!-- Populated dynamically via JS -->
+      <div id="pos-cart-empty" style="text-align: center; padding: 40px 16px; color: var(--text-muted); font-size: 0.82rem;">
+        <i data-lucide="shopping-cart" style="width: 32px; height: 32px; color: var(--text-faint); margin-bottom: 8px;"></i>
+        <p>Cart is empty. Tap or scan items on the left.</p>
+      </div>
+    </div>
+
+    <!-- Checkout Summary Area -->
+    <div style="padding: 14px 16px; border-top: 1px solid var(--border-color); background: var(--bg-surface); display: flex; flex-direction: column; gap: 10px;">
+      
+      <!-- Math breakdown -->
+      <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--text-muted);">
+        <div style="display: flex; justify-content: space-between;">
+          <span>Subtotal:</span>
+          <span id="pos-subtotal" style="font-weight: 600; color: var(--text-main);">{{ business.currency }}0.00</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Discount ({{ business.currency }}):</span>
+          <input type="number" id="pos-discount-input" min="0" step="1" value="0" class="form-input" style="width: 80px; height: 26px; text-align: right; font-size: 0.8rem;">
+        </div>
+        {% if business.tax_enabled %}
+          <div style="display: flex; justify-content: space-between;">
+            <span>GST Tax (CGST + SGST):</span>
+            <span id="pos-tax-val" style="color: var(--text-main);">{{ business.currency }}0.00</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Grand Total Display -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-surface-hover); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">Grand Total:</span>
+        <span id="pos-grand-total" style="font-size: 1.5rem; font-weight: 800; color: var(--accent-green-text);">{{ business.currency }}0.00</span>
+      </div>
+
+      <!-- Payment Methods -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+        <button class="payment-method-btn active" data-method="cash">Cash</button>
+        <button class="payment-method-btn" data-method="upi">UPI / QR</button>
+        <button class="payment-method-btn" data-method="card">Card</button>
+        <button class="payment-method-btn" data-method="credit">Pay Later</button>
+      </div>
+
+      <!-- Cash Tendered & Change calculator (Visible for Cash) -->
+      <div id="pos-cash-calc" style="display: flex; gap: 8px; align-items: center;">
+        <input type="number" id="pos-tendered-input" class="form-input" style="height: 36px; font-size: 0.82rem;" placeholder="Cash Tendered (₹)">
+        <span id="pos-change-display" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Change: ₹0.00</span>
+      </div>
+
+      <!-- Checkout Button -->
+      <button id="pos-submit-btn" class="btn-primary" style="height: 44px; width: 100%; justify-content: center; font-size: 1rem; font-weight: 700; background: var(--accent-green);">
+        <i data-lucide="check-circle-2" style="width: 20px; height: 20px;"></i>
+        <span>Complete & Print Bill (F9)</span>
+      </button>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // POS Billing Engine Configuration
+  window.SHOP_CURRENCY = "{{ business.currency }}";
+  window.TAX_ENABLED = {{ 'true' if business.tax_enabled else 'false' }};
+  window.CHECKOUT_URL = "{{ url_for('pos.checkout') }}";
+  window.PRODUCTS_API_URL = "{{ url_for('pos.api_products') }}";
+  window.BARCODE_API_URL = "{{ url_for('pos.api_barcode') }}";
+</script>
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+{% endblock %}

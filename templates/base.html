@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ShopLedger - Business Management & POS{% endblock %}</title>
+  
+  <!-- Prevent Theme Flash -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+    })();
+  </script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Modern Commercial Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='fintech.css') }}">
+  <style>
+    /* POS & Commercial additions */
+    .pos-nav-highlight {
+      background: var(--accent-green) !important;
+      color: #FFFFFF !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    }
+    .pos-nav-highlight .nav-icon {
+      color: #FFFFFF !important;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-paid { background: var(--accent-green-bg); color: var(--accent-green-text); }
+    .badge-partial { background: #FEF3C7; color: #D97706; }
+    .badge-unpaid { background: var(--accent-red-bg); color: var(--accent-red-text); }
+    .badge-low-stock { background: var(--accent-red-bg); color: var(--accent-red-text); font-weight: 600; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <div class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="main-sidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('dashboard.index') }}" class="brand-wrapper">
+          <div class="brand-logo">
+            <i data-lucide="store" style="width: 20px; height: 20px;"></i>
+          </div>
+          <span class="brand-name">ShopLedger</span>
+        </a>
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Toggle Sidebar">
+          <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+        </button>
+        <button class="sidebar-close-btn-mobile" id="sidebar-close-btn-mobile" title="Close menu">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- Prominent POS Billing button -->
+        <a href="{{ url_for('pos.index') }}" class="nav-link pos-nav-highlight" style="margin-bottom: 8px;">
+          <i data-lucide="zap" class="nav-icon"></i>
+          <span class="nav-label">POS Billing</span>
+        </a>
+
+        <span class="nav-section-title">Overview</span>
+        <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+          <i data-lucide="layout-dashboard" class="nav-icon"></i>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <span class="nav-section-title">Sales & Billing</span>
+        <a href="{{ url_for('invoices.list_invoices') }}" class="nav-link {% if 'invoice' in request.endpoint %}active{% endif %}">
+          <i data-lucide="receipt" class="nav-icon"></i>
+          <span class="nav-label">Invoices</span>
+        </a>
+        <a href="{{ url_for('returns.index') }}" class="nav-link {% if 'return' in request.endpoint %}active{% endif %}">
+          <i data-lucide="rotate-ccw" class="nav-icon"></i>
+          <span class="nav-label">Sales Returns</span>
+        </a>
+
+        <span class="nav-section-title">Inventory & Stock</span>
+        <a href="{{ url_for('inventory.list_products') }}" class="nav-link {% if 'inventory' in request.endpoint and 'movement' not in request.endpoint %}active{% endif %}">
+          <i data-lucide="package" class="nav-icon"></i>
+          <span class="nav-label">Products</span>
+        </a>
+        <a href="{{ url_for('inventory.stock_history') }}" class="nav-link {% if 'movement' in request.endpoint %}active{% endif %}">
+          <i data-lucide="history" class="nav-icon"></i>
+          <span class="nav-label">Stock Movements</span>
+        </a>
+
+        <span class="nav-section-title">People & Supply</span>
+        <a href="{{ url_for('customers.index') }}" class="nav-link {% if 'customer' in request.endpoint %}active{% endif %}">
+          <i data-lucide="users" class="nav-icon"></i>
+          <span class="nav-label">Customers</span>
+        </a>
+        <a href="{{ url_for('suppliers.index') }}" class="nav-link {% if 'supplier' in request.endpoint %}active{% endif %}">
+          <i data-lucide="truck" class="nav-icon"></i>
+          <span class="nav-label">Suppliers</span>
+        </a>
+        <a href="{{ url_for('suppliers.list_purchases') }}" class="nav-link {% if 'purchase' in request.endpoint %}active{% endif %}">
+          <i data-lucide="shopping-bag" class="nav-icon"></i>
+          <span class="nav-label">Purchases</span>
+        </a>
+
+        <span class="nav-section-title">Accounting & Reports</span>
+        <a href="{{ url_for('expenses.index') }}" class="nav-link {% if 'expense' in request.endpoint %}active{% endif %}">
+          <i data-lucide="wallet" class="nav-icon"></i>
+          <span class="nav-label">Expenses</span>
+        </a>
+        <a href="{{ url_for('reports.index') }}" class="nav-link {% if 'report' in request.endpoint %}active{% endif %}">
+          <i data-lucide="bar-chart-2" class="nav-icon"></i>
+          <span class="nav-label">Reports & P&L</span>
+        </a>
+        <a href="{{ url_for('auth.settings') }}" class="nav-link {% if 'setting' in request.endpoint %}active{% endif %}">
+          <i data-lucide="settings" class="nav-icon"></i>
+          <span class="nav-label">Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-snippet">
+          <div class="user-avatar">
+            {{ session.get('user_name', 'U')[0]|upper }}
+          </div>
+          <div class="user-meta">
+            <span class="user-name">{{ session.get('business_name', 'My Shop') }}</span>
+            <span class="user-role">{{ session.get('user_email', '') }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile Drawer Backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- Main Content Shell -->
+    <div class="main-wrapper">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-menu-toggle" title="Open navigation">
+            <i data-lucide="menu" style="width: 18px; height: 18px;"></i>
+          </button>
+          <div>
+            <h1 class="welcome-title">{{ session.get('business_name', 'ShopLedger') }}</h1>
+            <div class="current-date">
+              <i data-lucide="calendar" style="width: 13px; height: 13px;"></i>
+              <span id="current-date-display">Today</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Fast New Bill CTA -->
+          <a href="{{ url_for('pos.index') }}" class="btn-primary" style="text-decoration: none;">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+            <span class="btn-text">New Bill</span>
+          </a>
+
+          <!-- Theme Toggle (Dark / Light) -->
+          <button class="theme-toggle-btn" title="Toggle dark / light theme">
+            <i data-lucide="sun" style="width: 17px; height: 17px;"></i>
+          </button>
+
+          <!-- User Menu -->
+          <div class="profile-dropdown-wrapper">
+            <button class="action-icon-btn" id="profile-dropdown-trigger" title="Account settings">
+              <div class="user-avatar" style="width: 26px; height: 26px; font-size: 0.75rem;">
+                {{ session.get('user_name', 'U')[0]|upper }}
+              </div>
+            </button>
+            <div class="dropdown-menu" id="profile-dropdown-menu">
+              <div class="dropdown-header">
+                <div class="dropdown-header-name">{{ session.get('user_name', 'Owner') }}</div>
+                <div class="dropdown-header-email">{{ session.get('user_email', '') }}</div>
+              </div>
+              <a href="{{ url_for('auth.settings') }}" class="dropdown-item">
+                <i data-lucide="settings" style="width: 15px; height: 15px;"></i>
+                <span>Shop Settings</span>
+              </a>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item danger">
+                <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
+                <span>Sign Out</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Body Block -->
+      <main class="dashboard-content">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Shared App JS Engine -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
