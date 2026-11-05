@@ -1,4 +1,11 @@
 import sqlite3
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 # Connect to database (creates expense.db if not exists)
 connection = sqlite3.connect("expense.db")
@@ -22,6 +29,7 @@ date TEXT NOT NULL,
 category TEXT NOT NULL,
 amount REAL NOT NULL,
 description TEXT,
+type TEXT DEFAULT 'expense',
 FOREIGN KEY (user_id) REFERENCES users(id)
 )
 """)
@@ -29,4 +37,4 @@ FOREIGN KEY (user_id) REFERENCES users(id)
 connection.commit()
 connection.close()
 
-print("✅ Database setup completed successfully!")
+print("[SUCCESS] Database setup completed successfully!")

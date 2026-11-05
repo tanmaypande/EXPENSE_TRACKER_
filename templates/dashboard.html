@@ -1,77 +1,645 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <title>Expense Tracker Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styligss.css') }}">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex VaultFlow | Premium Financial Dashboard</title>
+  
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
 
+  <!-- Premium Fintech Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='fintech.css') }}">
+</head>
 <body>
 
-  <div class="dashboard">
-    <h1>Expense Tracker</h1>
+  <div class="app-layout">
+    
+    <!-- ================================================================= -->
+    <!-- 1. SIDEBAR NAVIGATION -->
+    <!-- ================================================================= -->
+    <aside class="sidebar" id="main-sidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('dashboard') }}" class="brand-wrapper">
+          <div class="brand-logo">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <div class="brand-info">
+            <span class="brand-name">
+              VaultFlow <span class="brand-badge">PRO</span>
+            </span>
+            <span class="brand-tagline">Fintech Wealth Engine</span>
+          </div>
+        </a>
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Toggle Sidebar">
+          <i data-lucide="chevron-left"></i>
+        </button>
+      </div>
 
-    <div class="carin">
+      <nav class="sidebar-nav">
+        <span class="nav-section-title">Core Management</span>
+        <a href="{{ url_for('dashboard') }}" class="nav-link active">
+          <i data-lucide="layout-dashboard" class="nav-icon"></i>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="#transactions-section" class="nav-link">
+          <i data-lucide="arrow-left-right" class="nav-icon"></i>
+          <span class="nav-label">Transactions</span>
+          <span class="nav-badge">{{ records|length }}</span>
+        </a>
+        <a href="#analytics-section" class="nav-link">
+          <i data-lucide="pie-chart" class="nav-icon"></i>
+          <span class="nav-label">Analytics</span>
+        </a>
 
-      <!-- Summary Cards -->
-      <div class="cards">
-        <div>
-          <h3>Total Income</h3>
-          <p>₹{{ income }}</p>
-        </div>
-        <div>
-          <h3>Total Expense</h3>
-          <p>₹{{ total }}</p>
-        </div>
-        <div>
-          <h3>Balance</h3>
-          <p>₹{{ income - total }}</p>
+        <span class="nav-section-title" style="margin-top: 14px;">Quick Actions</span>
+        <button class="nav-link open-add-modal-btn" data-type="expense" style="background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+          <i data-lucide="minus-circle" class="nav-icon" style="color: var(--accent-rose-light);"></i>
+          <span class="nav-label">Add Expense</span>
+        </button>
+        <button class="nav-link open-add-modal-btn" data-type="income" style="background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+          <i data-lucide="plus-circle" class="nav-icon" style="color: var(--accent-emerald-light);"></i>
+          <span class="nav-label">Add Income</span>
+        </button>
+
+        <span class="nav-section-title" style="margin-top: 14px;">Preferences</span>
+        <a href="#budget-widget-card" class="nav-link">
+          <i data-lucide="sliders" class="nav-icon"></i>
+          <span class="nav-label">Budget Limits</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="nav-link" style="color: var(--accent-rose-light);">
+          <i data-lucide="log-out" class="nav-icon"></i>
+          <span class="nav-label">Sign Out</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-snippet">
+          <div class="user-avatar">
+            {{ user_email[0]|upper if user_email else 'U' }}
+          </div>
+          <div class="user-meta">
+            <span class="user-name">{{ user_email.split('@')[0]|capitalize if user_email else 'User' }}</span>
+            <span class="user-role">{{ user_email if user_email else 'Account active' }}</span>
+          </div>
         </div>
       </div>
-      <div class="rec">
+    </aside>
+
+    <!-- ================================================================= -->
+    <!-- 2. MAIN CONTENT WRAPPER -->
+    <!-- ================================================================= -->
+    <div class="main-wrapper">
+      
+      <!-- Top Navigation Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-menu-toggle" title="Open navigation">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="topbar-welcome">
+            <h1 class="welcome-title">Good Day, {{ user_email.split('@')[0]|capitalize if user_email else 'Investor' }} 👋</h1>
+            <div class="current-date">
+              <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+              <span id="current-date-display">Today</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Global Search -->
+          <div class="search-container">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="global-search-input" class="search-input" placeholder="Search transactions...">
+            <span class="search-shortcut">⌘K</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <button class="action-icon-btn" title="Recent Alerts">
+            <i data-lucide="bell"></i>
+            <span class="notification-badge"></span>
+          </button>
+
+          <!-- Primary Call to Action -->
+          <button class="btn-primary-glow open-add-modal-btn">
+            <i data-lucide="plus"></i>
+            <span>New Transaction</span>
+          </button>
+
+          <!-- Profile Dropdown -->
+          <div class="profile-dropdown-wrapper">
+            <button class="profile-btn" id="profile-dropdown-trigger">
+              <div class="user-avatar" style="width: 38px; height: 38px;">
+                {{ user_email[0]|upper if user_email else 'U' }}
+              </div>
+            </button>
+            <div class="dropdown-menu" id="profile-dropdown-menu">
+              <div class="dropdown-header">
+                <div class="dropdown-header-name">{{ user_email.split('@')[0]|capitalize if user_email else 'Account' }}</div>
+                <div class="dropdown-header-email">{{ user_email }}</div>
+              </div>
+              <a href="{{ url_for('add_expense_page') }}" class="dropdown-item">
+                <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+                <span>Add Record Page</span>
+              </a>
+              <a href="{{ url_for('logout') }}" class="dropdown-item danger">
+                <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+                <span>Log Out</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Body Container -->
+      <main class="dashboard-content">
         
-        <a href="{{ url_for('add_expense') }}"><button class="addrec">ADD RECORDS</button></a>
-      </div>
-    </div>
+        <!-- ============================================================= -->
+        <!-- 3. FINANCIAL OVERVIEW METRIC CARDS (4 Grid Cards) -->
+        <!-- ============================================================= -->
+        <section class="metrics-grid">
+          
+          <!-- Card 1: Total Balance -->
+          <div class="metric-card balance">
+            <div class="metric-card-top">
+              <span class="metric-label">Total Net Balance</span>
+              <div class="metric-icon-box emerald">
+                <i data-lucide="wallet"></i>
+              </div>
+            </div>
+            <div class="metric-value">₹{{ "{:,.2f}".format(balance) }}</div>
+            <div class="metric-footer">
+              {% if balance >= 0 %}
+                <span class="trend-badge positive">
+                  <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i>
+                  Solvent
+                </span>
+                <span>Positive cash liquidity</span>
+              {% else %}
+                <span class="trend-badge negative">
+                  <i data-lucide="trending-down" style="width: 12px; height: 12px;"></i>
+                  Deficit
+                </span>
+                <span>Expenses exceed income</span>
+              {% endif %}
+            </div>
+          </div>
 
-    <!-- Charts -->
-    <div class="charts">
-      <div class="chart-box">
-        <h3>MONTHLY LIMIT</h3>
-        <div class="limit">
+          <!-- Card 2: Total Income -->
+          <div class="metric-card income">
+            <div class="metric-card-top">
+              <span class="metric-label">Total Inflow / Income</span>
+              <div class="metric-icon-box cyan">
+                <i data-lucide="arrow-down-left"></i>
+              </div>
+            </div>
+            <div class="metric-value">₹{{ "{:,.2f}".format(total_income) }}</div>
+            <div class="metric-footer">
+              <span class="trend-badge positive">
+                <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                Verified
+              </span>
+              <span>All recorded earnings</span>
+            </div>
+          </div>
 
-          <input type="text" class="innercircle" placeholder=" Enter your monthly limit  " >
-          <button style="background-color: rgb(0, 255, 102); border-radius:20%; height:40px; width:50px; ">SET</button>
-        </div>
-      </div>
-      <div class="chart-box">
-        <h3>Monthly Trend</h3>
-        <canvas id="lineChart"></canvas>
-      </div>
-    </div>
+          <!-- Card 3: Total Expenses -->
+          <div class="metric-card expense">
+            <div class="metric-card-top">
+              <span class="metric-label">Total Outflow / Expenses</span>
+              <div class="metric-icon-box rose">
+                <i data-lucide="arrow-up-right"></i>
+              </div>
+            </div>
+            <div class="metric-value">₹{{ "{:,.2f}".format(total_expense) }}</div>
+            <div class="metric-footer">
+              <span class="trend-badge negative">
+                <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
+                {{ records|length }} Records
+              </span>
+              <span>Total spending registered</span>
+            </div>
+          </div>
 
-    <!-- Recent Transactions -->
-    <div class="table-box">
-      <h3>Recent Transactions</h3>
-      <table>
-        <tbody>
-        {% for exp in expenses %}
-        <tr>
-          <td>{{ exp.date }}</td>
-          <td>{{ exp.category }}</td>
-          <td>₹{{ exp.amount }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+          <!-- Card 4: Net Savings & Rate -->
+          <div class="metric-card savings">
+            <div class="metric-card-top">
+              <span class="metric-label">Net Savings & Health</span>
+              <div class="metric-icon-box indigo">
+                <i data-lucide="piggy-bank"></i>
+              </div>
+            </div>
+            <div class="metric-value">₹{{ "{:,.2f}".format(savings) }}</div>
+            <div class="metric-footer">
+              <span class="trend-badge neutral">
+                <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+                {{ savings_rate }}% Rate
+              </span>
+              <span>Income retained</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- 4. MONTHLY BUDGET & LIMIT WIDGET -->
+        <!-- ============================================================= -->
+        <section class="budget-widget-card" id="budget-widget-card">
+          <div class="budget-info">
+            <div class="budget-title-row">
+              <span class="budget-title">Monthly Spending Budget</span>
+              <span class="budget-status-pill good" id="budget-status-pill">Calculating...</span>
+            </div>
+            <span class="budget-subtitle">
+              Spent <strong id="budget-spent-val" style="color: var(--text-primary);">₹0</strong> of <strong id="budget-limit-val" style="color: var(--text-primary);">₹30,000</strong>
+            </span>
+          </div>
+
+          <div class="budget-progress-container">
+            <div class="budget-progress-labels">
+              <span>Remaining allowance: <strong id="budget-remaining-val" style="color: var(--accent-emerald-light);">₹0</strong></span>
+              <span>Target: 100% Max</span>
+            </div>
+            <div class="budget-progress-bar">
+              <div class="budget-progress-fill" id="budget-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="budget-actions">
+            <button class="btn-secondary" id="edit-limit-btn">
+              <i data-lucide="sliders" style="width: 15px; height: 15px;"></i>
+              <span>Set Limit</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- 5. ANALYTICS & CHARTS SECTION -->
+        <!-- ============================================================= -->
+        <section class="analytics-grid" id="analytics-section">
+          
+          <!-- Chart 1: Cash Flow & Trends -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-wrapper">
+                <h2 class="chart-title">Cash Flow & Monthly Trends</h2>
+                <span class="chart-subtitle">Income vs Outflow aggregated from recorded transactions</span>
+              </div>
+            </div>
+            <div class="chart-body">
+              <canvas id="cashflowTrendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Category Distribution -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-wrapper">
+                <h2 class="chart-title">Expense Allocation</h2>
+                <span class="chart-subtitle">Breakdown by category</span>
+              </div>
+            </div>
+            <div class="chart-body">
+              <canvas id="categoryDonutChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- 6. TRANSACTION MANAGEMENT SECTION -->
+        <!-- ============================================================= -->
+        <section class="transactions-section" id="transactions-section">
+          
+          <div class="transactions-header">
+            <div class="transactions-title-group">
+              <h2 class="section-title">Ledger & Transactions</h2>
+              <span class="count-badge" id="visible-tx-count">{{ records|length }}</span>
+            </div>
+
+            <!-- Table Filter Toolbar -->
+            <div class="table-filters">
+              
+              <!-- Type switcher -->
+              <div class="type-toggle-group">
+                <button class="type-toggle-btn active" data-filter="all">All</button>
+                <button class="type-toggle-btn" data-filter="expense">Expenses</button>
+                <button class="type-toggle-btn" data-filter="income">Income</button>
+              </div>
+
+              <!-- Category filter -->
+              <select class="filter-select" id="table-category-filter">
+                <option value="all">All Categories</option>
+                <option value="food">Food & Dining</option>
+                <option value="utilities">Bills & Utilities</option>
+                <option value="shopping">Shopping</option>
+                <option value="salary">Salary & Pay</option>
+                <option value="investment">Investments</option>
+                <option value="transport">Transport</option>
+                <option value="entertainment">Entertainment</option>
+              </select>
+
+              <!-- In-table search input -->
+              <div class="search-container" style="width: 220px;">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="table-search-input" class="search-input" placeholder="Filter rows..." style="height: 34px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Modern Data Table -->
+          <div class="table-responsive">
+            <table class="fintech-table">
+              <thead>
+                <tr>
+                  <th>Transaction</th>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th style="text-align: right;">Amount</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transaction-table-body">
+                {% if records and records|length > 0 %}
+                  {% for r in records %}
+                    <tr class="tx-row" 
+                        data-id="{{ r.id }}"
+                        data-date="{{ r.date }}"
+                        data-category="{{ r.category }}"
+                        data-amount="{{ r.amount }}"
+                        data-desc="{{ r.description or '' }}"
+                        data-type="{{ r.type or 'expense' }}">
+                      
+                      <!-- Transaction Item -->
+                      <td>
+                        <div class="tx-item">
+                          <div class="tx-icon-badge {{ r.type or 'expense' }}">
+                            {% if r.type == 'income' %}
+                              <i data-lucide="arrow-down-left" style="width: 18px; height: 18px;"></i>
+                            {% else %}
+                              <i data-lucide="arrow-up-right" style="width: 18px; height: 18px;"></i>
+                            {% endif %}
+                          </div>
+                          <div class="tx-details">
+                            <span class="tx-name">{{ r.description or r.category|capitalize }}</span>
+                            {% if r.description %}
+                              <span class="tx-description">{{ r.category }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Date -->
+                      <td style="color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                        {{ r.date }}
+                      </td>
+
+                      <!-- Category Badge -->
+                      <td>
+                        <span class="category-pill">
+                          <i data-lucide="tag" style="width: 12px; height: 12px;"></i>
+                          {{ r.category }}
+                        </span>
+                      </td>
+
+                      <!-- Type Indicator -->
+                      <td>
+                        <span class="type-indicator {{ r.type or 'expense' }}">
+                          {% if r.type == 'income' %}
+                            <i data-lucide="plus-circle" style="width: 13px; height: 13px;"></i> Inflow
+                          {% else %}
+                            <i data-lucide="minus-circle" style="width: 13px; height: 13px;"></i> Outflow
+                          {% endif %}
+                        </span>
+                      </td>
+
+                      <!-- Amount -->
+                      <td style="text-align: right;">
+                        <span class="tx-amount {{ r.type or 'expense' }}">
+                          {% if r.type == 'income' %}+₹{{ "{:,.2f}".format(r.amount) }}{% else %}-₹{{ "{:,.2f}".format(r.amount) }}{% endif %}
+                        </span>
+                      </td>
+
+                      <!-- Actions -->
+                      <td>
+                        <div class="actions-cell">
+                          <!-- Edit Button -->
+                          <button class="table-action-btn tx-edit-btn" 
+                                  title="Edit Transaction"
+                                  data-id="{{ r.id }}"
+                                  data-date="{{ r.date }}"
+                                  data-category="{{ r.category }}"
+                                  data-amount="{{ r.amount }}"
+                                  data-desc="{{ r.description or '' }}"
+                                  data-type="{{ r.type or 'expense' }}">
+                            <i data-lucide="edit-3" style="width: 15px; height: 15px;"></i>
+                          </button>
+
+                          <!-- Delete Button (Preserves /delete/<id>) -->
+                          <a href="{{ url_for('delete_expense', id=r.id) }}" class="table-action-btn delete tx-delete-btn" title="Delete Transaction">
+                            <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <!-- Clean Empty State when zero transactions in DB -->
+                  <tr>
+                    <td colspan="6">
+                      <div class="empty-table-state">
+                        <div class="empty-icon-circle">
+                          <i data-lucide="receipt" style="width: 28px; height: 28px;"></i>
+                        </div>
+                        <h3 class="empty-title">No transactions recorded</h3>
+                        <p class="empty-text">Your ledger is completely fresh. Start tracking expenses or income to view real-time wealth metrics.</p>
+                        <button class="btn-primary-glow open-add-modal-btn">
+                          <i data-lucide="plus"></i>
+                          <span>Add Your First Record</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty state when search filters produce zero matches -->
+          <div id="empty-filter-state" class="empty-table-state" style="display: none;">
+            <div class="empty-icon-circle">
+              <i data-lucide="search-x" style="width: 28px; height: 28px;"></i>
+            </div>
+            <h3 class="empty-title">No matching transactions found</h3>
+            <p class="empty-text">Try adjusting your search keywords, category filter, or type selector.</p>
+          </div>
+        </section>
+
+      </main>
     </div>
   </div>
 
+  <!-- ================================================================= -->
+  <!-- 7. ADD TRANSACTION MODAL -->
+  <!-- ================================================================= -->
+  <div class="modal-backdrop" id="add-transaction-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Transaction</h3>
+        <button class="modal-close-btn modal-close-trigger">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form action="{{ url_for('add_expense') }}" method="POST">
+        <div class="modal-body">
+          
+          <!-- Segmented Type Switcher -->
+          <div class="segmented-control">
+            <button type="button" class="segment-btn active expense" data-type="expense">
+              <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+              Expense
+            </button>
+            <button type="button" class="segment-btn income" data-type="income">
+              <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
+              Income
+            </button>
+          </div>
+          <input type="hidden" name="type" class="hidden-type-input" value="expense">
+
+          <!-- Amount -->
+          <div class="form-group">
+            <label class="form-label">Transaction Amount (₹)</label>
+            <div class="input-with-affix">
+              <span class="input-affix">₹</span>
+              <input type="number" step="0.01" min="0.01" name="amount" class="form-input-lg" placeholder="0.00" required>
+            </div>
+          </div>
+
+          <!-- Date & Category Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" name="date" id="modal-add-date" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" class="form-input category-target-input" placeholder="e.g. Food, Salary, Rent" required>
+            </div>
+          </div>
+
+          <!-- Quick Category Suggestions -->
+          <div class="form-group">
+            <label class="form-label" style="font-size: 0.7rem; color: var(--text-muted);">Quick Suggestions</label>
+            <div class="category-quick-pills">
+              <span class="quick-pill" data-category="Food & Dining">🍔 Food</span>
+              <span class="quick-pill" data-category="Groceries">🛒 Groceries</span>
+              <span class="quick-pill" data-category="Salary">💼 Salary</span>
+              <span class="quick-pill" data-category="Bills & Utilities">⚡ Utilities</span>
+              <span class="quick-pill" data-category="Transport">🚗 Transport</span>
+              <span class="quick-pill" data-category="Shopping">🛍️ Shopping</span>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label class="form-label">Description / Merchant</label>
+            <input type="text" name="description" class="form-input" placeholder="Notes (e.g. Swiggy order, Client invoice)">
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary modal-close-trigger">Cancel</button>
+          <button type="submit" class="btn-primary-glow">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 8. EDIT TRANSACTION MODAL -->
+  <!-- ================================================================= -->
+  <div class="modal-backdrop" id="edit-transaction-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Transaction</h3>
+        <button class="modal-close-btn modal-close-trigger">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="edit-tx-form" action="" method="POST">
+        <div class="modal-body">
+          
+          <!-- Segmented Type Switcher -->
+          <div class="segmented-control">
+            <button type="button" class="segment-btn active expense" data-type="expense">
+              <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+              Expense
+            </button>
+            <button type="button" class="segment-btn income" data-type="income">
+              <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
+              Income
+            </button>
+          </div>
+          <input type="hidden" name="type" class="hidden-type-input" value="expense">
+
+          <!-- Amount -->
+          <div class="form-group">
+            <label class="form-label">Transaction Amount (₹)</label>
+            <div class="input-with-affix">
+              <span class="input-affix">₹</span>
+              <input type="number" step="0.01" min="0.01" name="amount" id="modal-edit-amount" class="form-input-lg" required>
+            </div>
+          </div>
+
+          <!-- Date & Category Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" name="date" id="modal-edit-date" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" id="modal-edit-category" class="form-input category-target-input" required>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <input type="text" name="description" id="modal-edit-desc" class="form-input">
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary modal-close-trigger">Cancel</button>
+          <button type="submit" class="btn-primary-glow">Update Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 9. HIDDEN DATA FOR ENGINE CONSUMPTION -->
+  <!-- ================================================================= -->
+  <input type="hidden" id="raw-total-expense" value="{{ total_expense }}">
+  <input type="hidden" id="raw-total-income" value="{{ total_income }}">
+
+  <!-- Embedded Real JSON Data from Database -->
+  <script id="monthly-data-json" type="application/json">{{ monthly_json|safe }}</script>
+  <script id="category-data-json" type="application/json">{{ categories_json|safe }}</script>
+
+  <!-- Application Script Engine -->
   <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
-
 </html>

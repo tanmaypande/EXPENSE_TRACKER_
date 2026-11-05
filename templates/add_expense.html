@@ -1,135 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Expense</title>
-    <style>
-        :root {
-            --bg-black: #0b0b0b;
-            --card-black: #1a1a1a;
-            --primary-green: #2ecc71;
-            --hover-green: #27ae60;
-            --text-white: #e0e0e0;
-            --text-gray: #a0a0a0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Record Transaction | VaultFlow Fintech</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-black);
-            color: var(--text-white);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .container {
-            background-color: var(--card-black);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 400px;
-            border: 1px solid #333;
-        }
-
-        h2 {
-            color: var(--primary-green);
-            margin-bottom: 1.5rem;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .form-group {
-            margin-bottom: 1.2rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-gray);
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            background-color: #252525;
-            border: 1px solid #444;
-            border-radius: 8px;
-            color: white;
-            font-size: 1rem;
-            box-sizing: border-box; /* Ensures padding doesn't break width */
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary-green);
-            box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--primary-green--);
-            border: none;
-            border-radius: 8px;
-            color: var(--bg-black);
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s ease;
-            margin-top: 1rem;
-        }
-
-        .btn-submit:hover {
-            background-color: var(--hover-green);
-        }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 1rem;
-            color: var(--text-gray);
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-
-        .back-link:hover {
-            color: var(--primary-green);
-        }
-        .grn-btn{
-            background-color: var(--primary-green);
-            border-radius: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-    </style>
+  <!-- Premium Fintech Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='fintech.css') }}">
 </head>
-<body>
+<body class="auth-page">
 
-<div class="container">
-    <h2>Add New Expense</h2>
+  <!-- Ambient Light Orbs -->
+  <div class="auth-glow-1"></div>
+  <div class="auth-glow-2"></div>
+
+  <!-- Card Container -->
+  <div class="auth-card" style="max-width: 520px; padding: 36px 32px;">
     
-<form action="/add" method="POST">
-    <label>Date:</label><br>
-    <input type="date" name="date" required><br><br>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+      <a href="{{ url_for('dashboard') }}" class="btn-secondary" style="padding: 6px 12px;">
+        <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
+        <span>Return to Dashboard</span>
+      </a>
+      <span class="brand-badge">Vault Entry</span>
+    </div>
 
-    <label>Category:</label><br>
-    <input type="text" name="category" required><br><br>
+    <div class="auth-brand" style="margin-bottom: 24px; text-align: left; align-items: flex-start;">
+      <h1 class="auth-title" style="font-size: 1.35rem;">Record New Transaction</h1>
+      <p class="auth-subtitle">Log cash inflow or outflow directly into your verified ledger</p>
+    </div>
 
-    <label>Amount:</label><br>
-    <input type="number" step="0.01" name="amount" required><br><br>
+    <form action="{{ url_for('add_expense') }}" method="POST" class="auth-form" id="page-add-form">
+      
+      <!-- Type Switcher -->
+      <div class="segmented-control" id="page-type-selector">
+        <button type="button" class="segment-btn {{ 'active expense' if initial_type != 'income' else 'expense' }}" data-type="expense">
+          <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+          Expense Outflow
+        </button>
+        <button type="button" class="segment-btn {{ 'active income' if initial_type == 'income' else 'income' }}" data-type="income">
+          <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
+          Income Inflow
+        </button>
+      </div>
+      <input type="hidden" name="type" id="page-hidden-type" value="{{ initial_type if initial_type in ['expense', 'income'] else 'expense' }}">
 
-    <label>Description:</label><br>
-    <input type="text" name="description"><br><br>
+      <!-- Amount -->
+      <div class="form-group">
+        <label class="form-label">Transaction Amount (₹)</label>
+        <div class="input-with-affix">
+          <span class="input-affix">₹</span>
+          <input type="number" step="0.01" min="0.01" name="amount" class="form-input-lg" placeholder="0.00" required autofocus>
+        </div>
+      </div>
 
-    <button type="submit" class="grn-btn">Add Expense</button>
-</form>
-</div>
+      <!-- Date & Category Row -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" name="date" id="page-date-input" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input type="text" name="category" id="page-category-input" class="form-input" placeholder="e.g. Dining, Salary" required>
+        </div>
+      </div>
 
+      <!-- Quick Category Suggestions -->
+      <div class="form-group">
+        <label class="form-label" style="font-size: 0.7rem; color: var(--text-muted);">Quick Suggestions</label>
+        <div class="category-quick-pills" id="page-quick-pills">
+          <span class="quick-pill" data-category="Food & Dining">🍔 Food</span>
+          <span class="quick-pill" data-category="Groceries">🛒 Groceries</span>
+          <span class="quick-pill" data-category="Salary">💼 Salary</span>
+          <span class="quick-pill" data-category="Bills & Utilities">⚡ Utilities</span>
+          <span class="quick-pill" data-category="Transport">🚗 Transport</span>
+          <span class="quick-pill" data-category="Shopping">🛍️ Shopping</span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="form-label">Description / Merchant Notes</label>
+        <input type="text" name="description" class="form-input" placeholder="Optional details (e.g. Monthly rent, Client bonus)">
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="btn-primary-glow" style="width: 100%; height: 46px; justify-content: center; margin-top: 10px;">
+        <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+        <span>Commit Transaction</span>
+      </button>
+
+    </form>
+
+  </div>
+
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    // Default to today's date
+    const dateInput = document.getElementById("page-date-input");
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().split("T")[0];
+    }
+
+    // Type Selector
+    const typeButtons = document.querySelectorAll("#page-type-selector .segment-btn");
+    const hiddenTypeInput = document.getElementById("page-hidden-type");
+
+    typeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        typeButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const selectedType = btn.getAttribute("data-type");
+        if (hiddenTypeInput) {
+          hiddenTypeInput.value = selectedType;
+        }
+      });
+    });
+
+    // Quick Category Pills
+    const pills = document.querySelectorAll("#page-quick-pills .quick-pill");
+    const catInput = document.getElementById("page-category-input");
+
+    pills.forEach((pill) => {
+      pill.addEventListener("click", () => {
+        pills.forEach((p) => p.classList.remove("selected"));
+        pill.classList.add("selected");
+        if (catInput) {
+          catInput.value = pill.getAttribute("data-category");
+        }
+      });
+    });
+  </script>
 </body>
 </html>

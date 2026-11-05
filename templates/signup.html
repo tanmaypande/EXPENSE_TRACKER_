@@ -1,74 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExpenseTracker | sign up</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styling.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account | VaultFlow Fintech</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-
+  <!-- Premium Fintech Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='fintech.css') }}">
 </head>
+<body class="auth-page">
 
-<body>
+  <!-- Ambient Light Orbs -->
+  <div class="auth-glow-1"></div>
+  <div class="auth-glow-2"></div>
 
-    <div class="decoration">
-        <div class="circle circle-1"></div>
-        <div class="circle circle-2"></div>
-
-        <div class="coin coin-1">
-            <div class="coin-face">$</div>
-        </div>
-
-        <div class="coin coin-2">
-            <div class="coin-face">$</div>
-        </div>
-
-        <div class="card-graphic">
-            <div class="card-chip"></div>
-            <div class="card-number">**** **** **** 3492</div>
-        </div>
+  <!-- Auth Card Container -->
+  <div class="auth-card">
+    
+    <div class="auth-brand">
+      <div class="auth-brand-logo">
+        <i data-lucide="shield-check" style="width: 28px; height: 28px;"></i>
+      </div>
+      <h1 class="auth-title">Create Pro Account</h1>
+      <p class="auth-subtitle">Begin your wealth tracking journey with VaultFlow</p>
     </div>
 
-    <div class="container" id="container">
-    <div class="form-container sign-in-container">
-            <form action="/signup" method = "POST">
-                <h1>Welcome Back</h1>
-                <div class="social-container">
-                    <a href="#" class="social"><ion-icon name="logo-google"></ion-icon></a>
-                    <a href="#" class="social"><ion-icon name="logo-apple"></ion-icon></a>
-                </div>
-                <span>or use your account</span>
-                <input type="email" name="email" placeholder="Email" required />
-                <input type="password" name="password" placeholder="Password" required />
+    <!-- Error Alert Banner -->
+    {% if error %}
+      <div class="auth-alert error">
+        <i data-lucide="alert-circle" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+        <span>{{ error }}</span>
+      </div>
+    {% endif %}
 
-                <button>signup</button>
-            </form>
+    <form action="{{ url_for('signup') }}" method="POST" class="auth-form">
+      
+      <!-- Email Field -->
+      <div class="form-group">
+        <label class="form-label">Work / Personal Email</label>
+        <div class="auth-input-wrapper">
+          <i data-lucide="mail" class="auth-input-icon"></i>
+          <input type="email" name="email" class="auth-input" placeholder="name@domain.com" required autofocus>
         </div>
+      </div>
 
-        <div class="overlay-container">
-            <div class="overlay">
-                <div class="overlay-panel overlay-left">
-                    <h1>Track Your Wealth!</h1>
-                    <p>Keep your expenses in check and watch your savings grow.</p>
-                    <button class="ghost" id="signIn">Log In</button>
-                </div>
-                <div class="overlay-panel overlay-right">
-                    <h1>Hello, Spender!</h1>
-                    <p>Enter your details and start your journey to financial freedom.</p>
-                    <a href="{{ url_for('login') }}"><button type="button" class="ghost">Log In</button>
-</a>
-
-                </div>
-            </div>
+      <!-- Password Field -->
+      <div class="form-group">
+        <label class="form-label">Master Password</label>
+        <div class="auth-input-wrapper">
+          <i data-lucide="lock" class="auth-input-icon"></i>
+          <input type="password" name="password" id="signup-password-field" class="auth-input" placeholder="At least 6 characters" required minlength="6">
+          <button type="button" class="password-toggle-btn" id="toggle-password-btn" title="Toggle visibility">
+            <i data-lucide="eye" id="password-eye-icon" style="width: 18px; height: 18px;"></i>
+          </button>
         </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="auth-btn-submit">
+        Initialize Vault & Start Free
+      </button>
+
+    </form>
+
+    <div class="auth-footer">
+      <span>Already have an account?</span>
+      <a href="{{ url_for('login') }}" class="auth-link">Log in instead</a>
     </div>
 
-    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <div class="auth-trust-badges">
+      <div class="trust-badge-item">
+        <i data-lucide="lock" style="width: 13px; height: 13px; color: var(--accent-emerald-light);"></i>
+        <span>Encrypted</span>
+      </div>
+      <div class="trust-badge-item">
+        <i data-lucide="check-circle" style="width: 13px; height: 13px; color: var(--accent-cyan);"></i>
+        <span>Instant Access</span>
+      </div>
+      <div class="trust-badge-item">
+        <i data-lucide="sparkles" style="width: 13px; height: 13px; color: var(--accent-amber);"></i>
+        <span>Full Suite</span>
+      </div>
+    </div>
 
+  </div>
+
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    // Password visibility toggle
+    const toggleBtn = document.getElementById("toggle-password-btn");
+    const passwordField = document.getElementById("signup-password-field");
+    const eyeIcon = document.getElementById("password-eye-icon");
+
+    if (toggleBtn && passwordField) {
+      toggleBtn.addEventListener("click", () => {
+        const isPassword = passwordField.type === "password";
+        passwordField.type = isPassword ? "text" : "password";
+        if (eyeIcon) {
+          eyeIcon.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
+    }
+  </script>
 </body>
-
 </html>
