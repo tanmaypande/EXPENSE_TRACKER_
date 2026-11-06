@@ -1,17 +1,93 @@
 from models.database import get_db_connection
 
-def get_suppliers(business_id, limit=100):
+def get_suppliers(business_id, search=None, status_filter=None, limit=100):
     conn = get_db_connection()
-    rows = conn.execute("""
+    query = """
     SELECT s.*,
            (SELECT COUNT(*) FROM purchases WHERE supplier_id = s.id) as total_purchases_count
     FROM suppliers s
     WHERE s.business_id = ?
-    ORDER BY s.name ASC
-    LIMIT ?
-    """, (business_id, limit)).fetchall()
+    """
+    params = [business_id]
+
+    if search:
+        term = f"%{search.strip().lower()}%"
+        query += " AND (LOWER(s.name) LIKE ? OR LOWER(s.contact_person) LIKE ? OR LOWER(s.phone) LIKE ? OR LOWER(s.email) LIKE ? OR LOWER(s.gstin) LIKE ?)"
+        params.extend([term, term, term, term, term])
+
+    if status_filter == "due":
+        query += " AND s.outstanding_balance > 0"
+    elif status_filter == "clear":
+        query += " AND (s.outstanding_balance = 0 OR s.outstanding_balance IS NULL)"
+
+    query += " ORDER BY s.name ASC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def get_supplier_by_id(supplier_id, business_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def update_supplier(business_id, supplier_id, name, contact_person="", phone="", email="", address="", gstin=""):
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Supplier name cannot be empty.")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    UPDATE suppliers
+    SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, gstin = ?
+    WHERE id = ? AND business_id = ?
+    """, (name, contact_person.strip(), phone.strip(), email.strip(), address.strip(), gstin.strip().upper(), supplier_id, business_id))
+    conn.commit()
+    conn.close()
+    return True
+
+def delete_supplier(business_id, supplier_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Unlink purchases to preserve inward stock and accounting records
+    cur.execute("UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND business_id = ?", (supplier_id, business_id))
+    cur.execute("DELETE FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_supplier_details(supplier_id, business_id):
+    conn = get_db_connection()
+    supplier = conn.execute("SELECT * FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id)).fetchone()
+    if not supplier:
+        conn.close()
+        return None
+
+    purchases = conn.execute("""
+    SELECT p.*,
+           ROUND(p.total_amount - p.paid_amount, 2) as balance_amount,
+           (SELECT COUNT(*) FROM purchase_items WHERE purchase_id = p.id) as item_count
+    FROM purchases p
+    WHERE p.supplier_id = ? AND p.business_id = ?
+    ORDER BY p.created_at DESC
+    """, (supplier_id, business_id)).fetchall()
+
+    conn.close()
+    p_list = [dict(p) for p in purchases]
+    total_inward_value = sum(p["total_amount"] for p in p_list)
+    total_paid_value = sum(p["paid_amount"] for p in p_list)
+    total_due_value = sum(p["balance_amount"] for p in p_list)
+
+    return {
+        "supplier": dict(supplier),
+        "purchases": p_list,
+        "total_inward_value": round(total_inward_value, 2),
+        "total_paid_value": round(total_paid_value, 2),
+        "total_due_value": round(total_due_value, 2),
+        "total_po_count": len(p_list)
+    }
 
 def create_supplier(business_id, name, contact_person="", phone="", email="", address="", gstin=""):
     conn = get_db_connection()

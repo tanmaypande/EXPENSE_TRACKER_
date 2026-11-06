@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier Profile - {{ supplier.name }} - ShopLedger{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.82rem;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Suppliers
+      </a>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Vendor Profile</span>
+    </div>
+    <h1 class="page-title">{{ supplier.name }}</h1>
+    <p class="page-subtitle">Procurement records, inward deliveries, and accounts payable statement.</p>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <a href="{{ url_for('suppliers.new_purchase') }}?supplier_id={{ supplier.id }}" class="btn btn-primary">
+      <i data-lucide="shopping-cart" style="width: 16px; height: 16px;"></i> Inward Stock / New PO
+    </a>
+    <button class="btn btn-secondary" onclick="openEditSupplierModal()">
+      <i data-lucide="edit-2" style="width: 15px; height: 15px;"></i> Edit Vendor
+    </button>
+  </div>
+</div>
+
+<!-- Supplier Profile & Outstanding Dues Grid -->
+{% set sup_due = (supplier.outstanding_balance or 0.0)|float %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;">
+  
+  <!-- Profile Info Card -->
+  <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 18px;">
+        <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2)); border: 2px solid #3B82F6; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: #3B82F6; flex-shrink: 0;">
+          {{ supplier.name[0]|upper }}
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-primary);">{{ supplier.name }}</h2>
+            {% if supplier.gstin %}
+              <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.25); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">
+                GST: {{ supplier.gstin }}
+              </span>
+            {% endif %}
+          </div>
+          {% if supplier.contact_person %}
+            <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; display: block;">
+              Contact Person: <strong>{{ supplier.contact_person }}</strong>
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Phone</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.92rem;">
+            {{ supplier.phone or 'Not Provided' }}
+          </span>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Email</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">
+            {{ supplier.email or 'Not Provided' }}
+          </span>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Depot Address</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">
+            {{ supplier.address or 'Standard Wholesale Depot' }}
+          </span>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Vendor Since</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">
+            {{ supplier.created_at[:10] if supplier.created_at else 'Recent' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts Payable KPI Card -->
+  <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-left: 4px solid {% if sup_due > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %}; padding: 24px;">
+    <span style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">Accounts Payable (Dues)</span>
+    <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: {% if sup_due > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %};">
+      ₹{{ "%.2f"|format(sup_due) }}
+    </div>
+    <span class="badge {% if sup_due > 0 %}badge-unpaid{% else %}badge-paid{% endif %}" style="margin-top: 10px; font-size: 0.8rem; padding: 4px 10px;">
+      {% if sup_due > 0 %}
+        <i data-lucide="clock" style="width: 12px; height: 12px;"></i> Outward Dues Pending
+      {% else %}
+        <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> All Vendor Bills Settled
+      {% endif %}
+    </span>
+    <a href="{{ url_for('suppliers.new_purchase') }}?supplier_id={{ supplier.id }}" class="btn btn-primary btn-sm" style="margin-top: 16px; width: 85%; justify-content: center;">
+      <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Inward Stock PO
+    </a>
+  </div>
+</div>
+
+<!-- Procurement Stats Cards -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Inward Value</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="shopping-cart" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(total_inward_value) }}</div>
+    <div class="kpi-meta">Across all purchase orders</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Paid Outward</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(total_paid_value) }}</div>
+    <div class="kpi-meta">Settled to vendor</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Purchase Invoices</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ total_po_count }}</div>
+    <div class="kpi-meta">Recorded inward consignments</div>
+  </div>
+</div>
+
+<!-- Purchase Orders History Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+    <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="shopping-bag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      Inward Purchase Invoices & Delivery Slips
+    </h3>
+    <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.75rem;">
+      {{ purchases|length }} Invoices
+    </span>
+  </div>
+
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PO / Bill #</th>
+          <th>Date</th>
+          <th>Items Received</th>
+          <th>Total Cost</th>
+          <th>Paid</th>
+          <th>Balance Due</th>
+          <th>Payment Mode</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if purchases %}
+          {% for p in purchases %}
+          <tr>
+            <td>
+              <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary);">
+                {{ p.purchase_number }}
+              </span>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">
+              {{ p.created_at[:10] if p.created_at else '' }}
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; color: var(--text-primary);">
+                {{ p.item_count or 1 }} {{ 'product' if p.item_count == 1 else 'products' }}
+              </span>
+            </td>
+            <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+              ₹{{ "%.2f"|format(p.total_amount) }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
+              ₹{{ "%.2f"|format(p.paid_amount) }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: {% if p.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %}; font-weight: {% if p.balance_amount > 0 %}700{% else %}400{% endif %};">
+              ₹{{ "%.2f"|format(p.balance_amount) }}
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem;">
+                {{ p.payment_method }}
+              </span>
+            </td>
+            <td>
+              {% if p.balance_amount == 0 %}
+                <span class="badge badge-paid">Fully Paid</span>
+              {% else %}
+                <span class="badge badge-partial">Credit / Dues</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+              <i data-lucide="shopping-bag" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
+              <p style="font-size: 0.88rem; margin-bottom: 12px;">No inward purchase bills recorded for this supplier yet.</p>
+              <a href="{{ url_for('suppliers.new_purchase') }}?supplier_id={{ supplier.id }}" class="btn btn-primary btn-sm">
+                <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Inward First Delivery
+              </a>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Edit Supplier -->
+<div class="modal-backdrop" id="editSupplierModal" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="edit-2" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
+        Edit Supplier Details
+      </h3>
+      <button type="button" class="btn-close" onclick="closeEditSupplierModal()">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers.edit_supplier', id=supplier.id) }}">
+      <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="edit_sup_name">Firm Name *</label>
+          <input type="text" id="edit_sup_name" name="name" class="form-control" required value="{{ supplier.name }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit_sup_contact">Contact Person</label>
+          <input type="text" id="edit_sup_contact" name="contact_person" class="form-control" value="{{ supplier.contact_person or '' }}">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="edit_sup_phone">Phone Number</label>
+            <input type="tel" id="edit_sup_phone" name="phone" class="form-control" value="{{ supplier.phone or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit_sup_gstin">GSTIN</label>
+            <input type="text" id="edit_sup_gstin" name="gstin" class="form-control" value="{{ supplier.gstin or '' }}" style="text-transform: uppercase;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit_sup_email">Email Address</label>
+          <input type="email" id="edit_sup_email" name="email" class="form-control" value="{{ supplier.email or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit_sup_address">Depot / Address</label>
+          <textarea id="edit_sup_address" name="address" class="form-control" rows="2">{{ supplier.address or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeEditSupplierModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEditSupplierModal() {
+    document.getElementById('editSupplierModal').style.display = 'flex';
+  }
+  function closeEditSupplierModal() {
+    document.getElementById('editSupplierModal').style.display = 'none';
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeEditSupplierModal();
+    }
+  });
+
+  const editSupModal = document.getElementById('editSupplierModal');
+  if (editSupModal) {
+    editSupModal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeEditSupplierModal();
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 import csv
 import io
 from flask import Blueprint, render_template, request, session, redirect, url_for, Response
-from services.report_service import get_pnl_report, get_gst_summary
+from services.report_service import get_pnl_report, get_gst_summary, get_monthly_trends, get_receivables_and_payables
 from services.product_service import get_products
 from services.business_service import get_business_by_id
 from models.database import get_db_connection
@@ -23,6 +23,8 @@ def index():
     pnl = get_pnl_report(biz_id, start_date=start_date, end_date=end_date)
     gst = get_gst_summary(biz_id, start_date=start_date, end_date=end_date)
     business = get_business_by_id(biz_id)
+    monthly_trends = get_monthly_trends(biz_id, months=6)
+    dues = get_receivables_and_payables(biz_id)
 
     # Inventory Valuation summary
     products = get_products(biz_id, limit=500)
@@ -34,6 +36,8 @@ def index():
         business=business,
         pnl=pnl,
         gst=gst,
+        monthly_trends=monthly_trends,
+        dues=dues,
         total_cost_val=round(total_cost_val, 2),
         total_retail_val=round(total_retail_val, 2),
         start_date=start_date,

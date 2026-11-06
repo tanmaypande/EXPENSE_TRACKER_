@@ -153,22 +153,28 @@ def get_pnl_report(business_id, start_date=None, end_date=None):
     FROM sales
     WHERE business_id = ?
     """
-    params = [business_id]
+    sub_params = [business_id]
     date_filter_s2 = ""
+    if start_date:
+        date_filter_s2 += " AND date(s2.created_at) >= ?"
+        sub_params.append(start_date)
+    if end_date:
+        date_filter_s2 += " AND date(s2.created_at) <= ?"
+        sub_params.append(end_date)
+
+    main_params = [business_id]
     date_filter = ""
     if start_date:
         date_filter += " AND date(created_at) >= ?"
-        date_filter_s2 += " AND date(s2.created_at) >= ?"
-        params.append(start_date)
+        main_params.append(start_date)
     if end_date:
         date_filter += " AND date(created_at) <= ?"
-        date_filter_s2 += " AND date(s2.created_at) <= ?"
-        params.append(end_date)
+        main_params.append(end_date)
 
     query_sales = query_sales.format(date_filter_s2=date_filter_s2) + date_filter
-    params.insert(1, business_id)
+    all_params = sub_params + main_params
 
-    row_sales = conn.execute(query_sales, params).fetchone()
+    row_sales = conn.execute(query_sales, all_params).fetchone()
     gross_sales = float(row_sales["gross_sales"])
     total_tax = float(row_sales["total_tax"])
     total_cogs = float(row_sales["total_cogs"])
@@ -259,3 +265,75 @@ def get_gst_summary(business_id, start_date=None, end_date=None):
     d["sgst"] = d.get("total_sgst", 0.0)
     d["total_tax"] = d.get("total_gst", 0.0)
     return d
+
+def get_monthly_trends(business_id, months=6):
+    """Computes monthly financial trends for the last N months."""
+    conn = get_db_connection()
+    today = datetime.date.today()
+    labels = []
+    sales_data = []
+    expenses_data = []
+    profit_data = []
+
+    month_tuples = []
+    for i in range(months - 1, -1, -1):
+        year = today.year
+        month = today.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        month_tuples.append((year, month))
+
+    for year, month in month_tuples:
+        ym_str = f"{year:04d}-{month:02d}"
+        label = datetime.date(year, month, 1).strftime("%b %Y")
+        labels.append(label)
+
+        s_row = conn.execute("""
+        SELECT COALESCE(SUM(grand_total), 0.0) as s_total
+        FROM sales
+        WHERE business_id = ? AND strftime('%Y-%m', created_at) = ?
+        """, (business_id, ym_str)).fetchone()
+        s_val = float(s_row["s_total"]) if s_row else 0.0
+        sales_data.append(round(s_val, 2))
+
+        e_row = conn.execute("""
+        SELECT COALESCE(SUM(amount), 0.0) as e_total
+        FROM expenses
+        WHERE business_id = ? AND strftime('%Y-%m', date) = ?
+        """, (business_id, ym_str)).fetchone()
+        e_val = float(e_row["e_total"]) if e_row else 0.0
+        expenses_data.append(round(e_val, 2))
+
+        profit_data.append(round(s_val - e_val, 2))
+
+    conn.close()
+    return {
+        "labels": labels,
+        "sales": sales_data,
+        "expenses": expenses_data,
+        "profit": profit_data
+    }
+
+def get_receivables_and_payables(business_id):
+    """Fetches total outstanding customer receivables and supplier payables."""
+    conn = get_db_connection()
+    r_row = conn.execute("""
+    SELECT COALESCE(SUM(outstanding_balance), 0.0) as total_receivable
+    FROM customers
+    WHERE business_id = ? AND outstanding_balance > 0
+    """, (business_id,)).fetchone()
+    total_receivable = float(r_row["total_receivable"]) if r_row else 0.0
+
+    p_row = conn.execute("""
+    SELECT COALESCE(SUM(outstanding_balance), 0.0) as total_payable
+    FROM suppliers
+    WHERE business_id = ? AND outstanding_balance > 0
+    """, (business_id,)).fetchone()
+    total_payable = float(p_row["total_payable"]) if p_row else 0.0
+
+    conn.close()
+    return {
+        "total_receivable": round(total_receivable, 2),
+        "total_payable": round(total_payable, 2)
+    }

@@ -15,6 +15,11 @@
     <h1 class="page-title">Receive Inward Stock / Vendor Purchase</h1>
     <p class="page-subtitle">Record supplier deliveries. Stock quantities and purchase history update automatically upon confirmation.</p>
   </div>
+  <div>
+    <a href="{{ url_for('suppliers.list_purchases') }}" class="btn btn-secondary" title="Cancel and return to inward bills" style="display: inline-flex; align-items: center; gap: 6px;">
+      <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cancel
+    </a>
+  </div>
 </div>
 
 <form id="purchaseForm" method="POST" action="{{ url_for('suppliers.new_purchase') }}" onsubmit="return validatePurchaseForm()">
@@ -288,5 +293,12 @@
 
   // Pre-seed 1 initial row
   addItemRow();
+
+  // Escape key to cancel
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      window.location.href = "{{ url_for('suppliers.list_purchases') }}";
+    }
+  });
 </script>
 {% endblock %}

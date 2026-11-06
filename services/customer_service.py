@@ -1,6 +1,6 @@
 from models.database import get_db_connection
 
-def get_customers(business_id, search=None, limit=100):
+def get_customers(business_id, search=None, status_filter=None, sort_by=None, limit=100):
     conn = get_db_connection()
     query = """
     SELECT c.*, 
@@ -12,15 +12,57 @@ def get_customers(business_id, search=None, limit=100):
 
     if search:
         s = f"%{search.strip().lower()}%"
-        query += " AND (LOWER(c.name) LIKE ? OR LOWER(c.phone) LIKE ? OR LOWER(c.email) LIKE ?)"
-        params.extend([s, s, s])
+        query += " AND (LOWER(c.name) LIKE ? OR LOWER(c.phone) LIKE ? OR LOWER(c.email) LIKE ? OR LOWER(c.gstin) LIKE ?)"
+        params.extend([s, s, s, s])
 
-    query += " ORDER BY c.name ASC LIMIT ?"
+    if status_filter == "due":
+        query += " AND c.outstanding_balance > 0"
+    elif status_filter == "clear":
+        query += " AND (c.outstanding_balance = 0 OR c.outstanding_balance IS NULL)"
+
+    if sort_by == "balance_desc":
+        query += " ORDER BY c.outstanding_balance DESC, c.name ASC"
+    elif sort_by == "name_desc":
+        query += " ORDER BY c.name DESC"
+    elif sort_by == "newest":
+        query += " ORDER BY c.created_at DESC"
+    elif sort_by == "spent_desc":
+        query += " ORDER BY c.total_spent DESC"
+    else:
+        query += " ORDER BY c.name ASC"
+
+    query += " LIMIT ?"
     params.append(limit)
 
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def update_customer(business_id, customer_id, name, phone=None, email=None, address=None, gstin=None):
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Customer name cannot be empty.")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    UPDATE customers
+    SET name = ?, phone = ?, email = ?, address = ?, gstin = ?
+    WHERE id = ? AND business_id = ?
+    """, (name, (phone or "").strip(), (email or "").strip(), (address or "").strip(), (gstin or "").strip().upper(), customer_id, business_id))
+    conn.commit()
+    conn.close()
+    return True
+
+def delete_customer(business_id, customer_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Unlink any associated sales so invoices remain historically accurate
+    cur.execute("UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
+    cur.execute("DELETE FROM customer_payments WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
+    cur.execute("DELETE FROM customers WHERE id = ? AND business_id = ?", (customer_id, business_id))
+    conn.commit()
+    conn.close()
+    return True
 
 def get_customer_by_id(customer_id, business_id):
     conn = get_db_connection()

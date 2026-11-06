@@ -1,103 +1,140 @@
 {% extends "base.html" %}
 
-{% block title %}Customer Ledger - {{ customer.name }} - ShopLedger{% endblock %}
+{% block title %}Statement of Account - {{ customer.name }} - ShopLedger{% endblock %}
 
 {% block content %}
 <div class="content-header">
   <div>
-    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-      <a href="{{ url_for('customers.index') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
-        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Customers
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="{{ url_for('customers.index') }}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.82rem;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> People
       </a>
       <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
-      <span style="color: var(--text-muted); font-size: 0.85rem;">Khata Ledger</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Statement of Account</span>
     </div>
-    <h1 class="page-title">{{ customer.name }} — Statement of Account</h1>
-    <p class="page-subtitle">Track customer sales history, invoice settlements, and payments ledger.</p>
+    <h1 class="page-title">{{ customer.name }}</h1>
+    <p class="page-subtitle">Complete ledger of billing transactions, credit history, and payment vouchers.</p>
   </div>
-  <div style="display: flex; gap: 10px;">
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <a href="{{ url_for('pos.index') }}?customer_id={{ customer.id }}" class="btn btn-primary">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i> New Sale / Bill
+    </a>
     {% set cust_bal = (customer.outstanding_balance or 0.0)|float %}
     {% if cust_bal > 0 %}
-      <button class="btn btn-primary" onclick="openPaymentModal()">
-        <i data-lucide="hand-coins" style="width: 16px; height: 16px;"></i> Settle Outstanding Dues
+      <button type="button" class="btn btn-secondary" onclick="openPaymentModal()" style="color: var(--accent-green); font-weight: 600;">
+        <i data-lucide="hand-coins" style="width: 16px; height: 16px;"></i> Settle Dues
       </button>
     {% endif %}
+    <a href="{{ url_for('customers.index') }}" class="btn btn-secondary">
+      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Back to People
+    </a>
   </div>
 </div>
 
-<!-- Customer Profile Summary -->
+<!-- Customer Profile & Financial Summary Grid -->
 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;">
+  <!-- Profile Details Card -->
   <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
     <div>
-      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
-        <div style="width: 48px; height: 48px; border-radius: var(--radius-full); background: var(--bg-secondary); border: 2px solid var(--accent-green); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; color: var(--accent-green);">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 18px;">
+        <div style="width: 52px; height: 52px; border-radius: var(--radius-full); background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2)); border: 2px solid var(--accent-green); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: var(--accent-green); flex-shrink: 0;">
           {{ customer.name[0]|upper }}
         </div>
         <div>
-          <h2 style="font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text-primary);">{{ customer.name }}</h2>
-          <span style="font-size: 0.82rem; color: var(--text-muted);">Registered Client Since {{ customer.created_at[:10] if customer.created_at else 'Recent' }}</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-primary);">{{ customer.name }}</h2>
+            {% if customer.gstin %}
+              <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.25); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">
+                B2B Client
+              </span>
+            {% else %}
+              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.72rem; color: var(--text-muted);">
+                Customer Account
+              </span>
+            {% endif %}
+          </div>
+          <span style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; display: block;">
+            Client account opened on {{ customer.created_at[:10] if customer.created_at else 'Recent' }}
+          </span>
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
         <div>
-          <span style="color: var(--text-muted); display: block;">Contact Phone:</span>
-          <span style="font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">{{ customer.phone or 'Not Provided' }}</span>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Contact Phone</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.92rem;">
+            {{ customer.phone or 'Not Provided' }}
+          </span>
         </div>
         <div>
-          <span style="color: var(--text-muted); display: block;">Email:</span>
-          <span style="font-weight: 600; color: var(--text-primary);">{{ customer.email or 'Not Provided' }}</span>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Email Address</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">
+            {{ customer.email or 'Not Provided' }}
+          </span>
         </div>
         <div>
-          <span style="color: var(--text-muted); display: block;">GSTIN / Tax ID:</span>
-          <span style="font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">{{ customer.gstin or 'Unregistered / B2C' }}</span>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">GSTIN / Tax ID</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.92rem;">
+            {{ customer.gstin or 'Unregistered / B2C' }}
+          </span>
         </div>
         <div>
-          <span style="color: var(--text-muted); display: block;">Billing Address:</span>
-          <span style="font-weight: 600; color: var(--text-primary);">{{ customer.address or 'Standard Counter Customer' }}</span>
+          <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px;">Address / Delivery City</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">
+            {{ customer.address or 'Standard Walk-in / Counter' }}
+          </span>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-left: 4px solid {% if cust_bal > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %};">
-    <span style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">Current Khata Balance</span>
-    <div style="font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: {% if cust_bal > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %};">
+  <!-- Outstanding Dues KPI Card -->
+  <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-left: 4px solid {% if cust_bal > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %}; padding: 24px;">
+    <span style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">Current Khata Balance</span>
+    <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: {% if cust_bal > 0 %}var(--accent-red){% else %}var(--accent-green){% endif %};">
       ₹{{ "%.2f"|format(cust_bal) }}
     </div>
-    <span class="badge {% if cust_bal > 0 %}badge-unpaid{% else %}badge-paid{% endif %}" style="margin-top: 8px;">
-      {% if cust_bal > 0 %}Payment Pending{% else %}All Dues Cleared{% endif %}
+    <span class="badge {% if cust_bal > 0 %}badge-unpaid{% else %}badge-paid{% endif %}" style="margin-top: 10px; font-size: 0.8rem; padding: 4px 10px;">
+      {% if cust_bal > 0 %}
+        <i data-lucide="clock" style="width: 12px; height: 12px;"></i> Credit Pending Collection
+      {% else %}
+        <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> All Dues Settled (₹0.00)
+      {% endif %}
     </span>
     {% if cust_bal > 0 %}
-      <button class="btn btn-primary btn-sm" onclick="openPaymentModal()" style="margin-top: 14px; width: 80%;">
-        <i data-lucide="hand-coins" style="width: 14px; height: 14px;"></i> Record Payment
+      <button class="btn btn-primary btn-sm" onclick="openPaymentModal()" style="margin-top: 16px; width: 85%; justify-content: center;">
+        <i data-lucide="hand-coins" style="width: 14px; height: 14px;"></i> Settle Payment
       </button>
     {% endif %}
   </div>
 </div>
 
+<!-- Ledger Data Grid (Invoices & Settlements) -->
 <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px;">
   
   <!-- Invoices Table -->
   <div class="card" style="padding: 0; overflow: hidden;">
-    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
       <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
         <i data-lucide="receipt" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
-        Invoices & Purchases
+        Billing History & Invoices
       </h3>
-      <span style="font-size: 0.8rem; color: var(--text-muted);">{{ invoices|length }} Bills</span>
+      <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.75rem;">
+        {{ invoices|length }} Bills
+      </span>
     </div>
 
     <div class="table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Invoice</th>
+            <th>Invoice #</th>
             <th>Date</th>
             <th>Bill Total</th>
             <th>Paid</th>
             <th>Balance</th>
             <th>Status</th>
+            <th style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -105,11 +142,11 @@
             {% for inv in invoices %}
             <tr>
               <td>
-                <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-green);">
-                  {{ inv.invoice_number }}
+                <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-green); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                  <i data-lucide="file-text" style="width: 13px; height: 13px;"></i> {{ inv.invoice_number }}
                 </a>
               </td>
-              <td style="font-size: 0.82rem; color: var(--text-muted);">
+              <td style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">
                 {{ inv.created_at[:10] }}
               </td>
               <td style="font-weight: 600; font-family: 'JetBrains Mono', monospace;">
@@ -118,7 +155,7 @@
               <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
                 ₹{{ "%.2f"|format(inv.paid_amount) }}
               </td>
-              <td style="font-family: 'JetBrains Mono', monospace; color: {% if inv.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %};">
+              <td style="font-family: 'JetBrains Mono', monospace; color: {% if inv.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %}; font-weight: {% if inv.balance_amount > 0 %}700{% else %}400{% endif %};">
                 ₹{{ "%.2f"|format(inv.balance_amount) }}
               </td>
               <td>
@@ -130,12 +167,23 @@
                   <span class="badge badge-unpaid">Unpaid</span>
                 {% endif %}
               </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" class="btn btn-secondary btn-sm" title="View Full Bill">
+                    <i data-lucide="eye" style="width: 13px; height: 13px;"></i> View
+                  </a>
+                  <a href="{{ url_for('invoices.print_invoice', id=inv.id) }}" target="_blank" class="btn btn-secondary btn-sm" title="Print Invoice">
+                    <i data-lucide="printer" style="width: 13px; height: 13px;"></i> Print
+                  </a>
+                </div>
+              </td>
             </tr>
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="6" style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
-                No invoices recorded for this customer yet.
+              <td colspan="7" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+                <i data-lucide="receipt" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
+                <p style="font-size: 0.88rem;">No billing invoices recorded for this person yet.</p>
               </td>
             </tr>
           {% endif %}
@@ -146,12 +194,14 @@
 
   <!-- Payments & Settlements Table -->
   <div class="card" style="padding: 0; overflow: hidden;">
-    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
       <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
         <i data-lucide="hand-coins" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
         Payments Received
       </h3>
-      <span style="font-size: 0.8rem; color: var(--text-muted);">{{ payments|length }} Payments</span>
+      <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.75rem;">
+        {{ payments|length }} Receipts
+      </span>
     </div>
 
     <div class="table-container">
@@ -168,7 +218,7 @@
           {% if payments %}
             {% for p in payments %}
             <tr>
-              <td style="font-size: 0.82rem; color: var(--text-muted);">
+              <td style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">
                 {{ p.created_at[:10] }}
               </td>
               <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
@@ -186,8 +236,9 @@
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="4" style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
-                No khata repayment records found.
+              <td colspan="4" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+                <i data-lucide="hand-coins" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
+                <p style="font-size: 0.88rem;">No payment settlement records found.</p>
               </td>
             </tr>
           {% endif %}
@@ -206,17 +257,18 @@
         <i data-lucide="hand-coins" style="width: 20px; height: 20px; color: var(--accent-green);"></i>
         Record Khata Repayment
       </h3>
-      <button class="btn-close" onclick="closePaymentModal()">&times;</button>
+      <button type="button" class="btn-close" onclick="closePaymentModal()">&times;</button>
     </div>
     <form method="POST" action="{{ url_for('customers.pay', id=customer.id) }}">
       <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-        <div style="background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.85rem; color: var(--text-muted);">Current Outstanding: <strong style="color: var(--accent-red);">₹{{ "%.2f"|format(customer.outstanding_balance or 0.0) }}</strong></div>
+        <div style="background: var(--bg-secondary); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Person: <strong style="color: var(--text-primary);">{{ customer.name }}</strong></div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Current Outstanding: <strong style="color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(cust_bal) }}</strong></div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="amount">Payment Amount (₹) *</label>
-          <input type="number" step="0.01" min="0.01" id="amount" name="amount" class="form-control" required value="{{ customer.outstanding_balance or 0.0 }}">
+          <input type="number" step="0.01" min="0.01" id="amount" name="amount" class="form-control" required value="{{ cust_bal }}">
         </div>
 
         <div class="form-group">
@@ -231,7 +283,7 @@
 
         <div class="form-group">
           <label class="form-label" for="notes">Notes / Reference (Optional)</label>
-          <input type="text" id="notes" name="notes" class="form-control" placeholder="e.g. Settle cash payment">
+          <input type="text" id="notes" name="notes" class="form-control" placeholder="e.g. Settle cash payment, ref #8920">
         </div>
       </div>
       <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
@@ -248,6 +300,21 @@
   }
   function closePaymentModal() {
     document.getElementById('payModal').style.display = 'none';
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closePaymentModal();
+    }
+  });
+
+  const payModalEl = document.getElementById('payModal');
+  if (payModalEl) {
+    payModalEl.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closePaymentModal();
+      }
+    });
   }
 </script>
 {% endblock %}

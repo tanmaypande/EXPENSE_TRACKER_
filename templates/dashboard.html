@@ -1,17 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Expense Tracker</title>
   
-  <!-- Prevent Theme Flash -->
   <script>
-    (function() {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
-    })();
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
   </script>
 
   <!-- Google Fonts -->
@@ -122,11 +118,6 @@
             <i data-lucide="search" class="search-icon"></i>
             <input type="text" id="global-search-input" class="search-input" placeholder="Search transactions...">
           </div>
-
-          <!-- Theme Toggle (Dark / Light) -->
-          <button class="theme-toggle-btn" title="Toggle dark / light theme">
-            <i data-lucide="sun" style="width: 17px; height: 17px;"></i>
-          </button>
 
           <!-- Add Transaction CTA -->
           <button class="btn-primary open-add-modal-btn" title="Add transaction">

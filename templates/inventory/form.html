@@ -6,7 +6,7 @@
 <div class="content-header">
   <div>
     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-      <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+      <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm" id="btn-back-products">
         <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Back to Products
       </a>
       <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
@@ -15,20 +15,32 @@
     <h1 class="page-title">{% if product %}Edit Product: {{ product.name }}{% else %}Add New Product{% endif %}</h1>
     <p class="page-subtitle">Configure product pricing, barcode scanning, stock tracking, and tax rates.</p>
   </div>
+  <div>
+    <!-- Top-Right Close / Cross Button -->
+    <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary" id="btn-cancel-top" title="Cancel & Close" style="display: inline-flex; align-items: center; gap: 6px;">
+      <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cancel
+    </a>
+  </div>
 </div>
 
-<form method="POST" action="{% if product %}{{ url_for('inventory.edit_product', id=product.id) }}{% else %}{{ url_for('inventory.add_product') }}{% endif %}">
+<form method="POST" action="{% if product %}{{ url_for('inventory.edit_product', id=product.id) }}{% else %}{{ url_for('inventory.add_product') }}{% endif %}" id="productForm">
   <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
     
     <!-- Left Column: Primary Details -->
-    <div style="display: flex; flexDirection: column; gap: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
       
       <!-- Basic Info Card -->
       <div class="card">
-        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-          <i data-lucide="tag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
-          General Information
-        </h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="tag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+            General Information
+          </h3>
+          <!-- Top Right Card Close Cross Icon -->
+          <a href="{{ url_for('inventory.list_products') }}" class="btn-close" title="Close and return to inventory" aria-label="Cancel">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </a>
+        </div>
 
         <div class="form-group">
           <label class="form-label" for="name">Product Name *</label>
@@ -77,14 +89,14 @@
             <label class="form-label" for="purchase_price">Cost / Purchase Price (₹)</label>
             <input type="number" step="0.01" min="0" id="purchase_price" name="purchase_price" class="form-control" 
                    value="{{ product.purchase_price if product else '0.00' }}" placeholder="0.00">
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Used for accurate profit calculation</small>
+            <small style="color: var(--text-muted); font-size: 0.74rem;">Used for accurate profit calculation</small>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="selling_price">Selling / Retail Price (₹) *</label>
             <input type="number" step="0.01" min="0" id="selling_price" name="selling_price" class="form-control" required 
                    value="{{ product.selling_price if product else '0.00' }}" placeholder="0.00">
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Price billed at POS counter</small>
+            <small style="color: var(--text-muted); font-size: 0.74rem;">Price billed at POS counter</small>
           </div>
 
           <div class="form-group">
@@ -99,9 +111,9 @@
           </div>
         </div>
 
-        <div id="margin-preview" style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Estimated Gross Margin:</span>
-          <span id="margin-badge" style="font-weight: 700; color: var(--accent-green); font-size: 0.95rem;">₹0.00 (0.0%)</span>
+        <div id="margin-preview" style="background: #F8FAFC; border-radius: var(--radius-md); padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Estimated Gross Margin:</span>
+          <span id="margin-badge" style="font-weight: 700; color: var(--accent-green); font-size: 0.95rem; font-family: 'JetBrains Mono', monospace;">₹0.00 (0.0%)</span>
         </div>
       </div>
 
@@ -119,15 +131,15 @@
 
         <div class="form-group">
           <label class="form-label" for="barcode">Barcode / EAN (Scannable)</label>
-          <div style="display: flex; gap: 6px;">
+          <div style="display: flex; gap: 8px;">
             <input type="text" id="barcode" name="barcode" class="form-control" 
                    value="{{ product.barcode if product else '' }}" 
                    placeholder="Scan with barcode gun">
-            <button type="button" class="btn btn-secondary" onclick="generateRandomBarcode()" title="Generate Barcode">
+            <button type="button" class="btn btn-secondary" onclick="generateRandomBarcode()" title="Generate Random Barcode">
               <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
             </button>
           </div>
-          <small style="color: var(--text-muted); font-size: 0.75rem;">Instant auto-add in POS terminal</small>
+          <small style="color: var(--text-muted); font-size: 0.74rem;">Instant auto-add in POS terminal</small>
         </div>
 
         <div class="form-group" style="margin-bottom: 0;">
@@ -149,16 +161,16 @@
         <div class="form-group">
           <label class="form-label" for="stock_quantity">Opening Stock Quantity</label>
           <input type="number" step="0.01" min="0" id="stock_quantity" name="stock_quantity" class="form-control" value="0" placeholder="0">
-          <small style="color: var(--text-muted); font-size: 0.75rem;">Initial physical stock available in shop</small>
+          <small style="color: var(--text-muted); font-size: 0.74rem;">Initial physical stock available in shop</small>
         </div>
         {% else %}
-        <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-color);">
-          <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Current Physical Stock:</span>
-          <span style="font-size: 1.3rem; font-weight: 700; color: {% if product.stock_quantity <= product.min_stock_level %}var(--accent-red){% else %}var(--accent-green){% endif %};">
+        <div style="background: #F8FAFC; border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.8rem; color: var(--text-muted); display: block; font-weight: 500;">Current Physical Stock:</span>
+          <span style="font-size: 1.4rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: {% if product.stock_quantity <= product.min_stock_level %}var(--accent-red){% else %}var(--accent-green){% endif %};">
             {{ product.stock_quantity }} {{ product.unit }}
           </span>
           <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-            To modify stock, use the Stock Adjustment option on the Inventory table.
+            To modify stock count, use the Stock Adjustment button on the Inventory catalog table.
           </span>
         </div>
         {% endif %}
@@ -167,7 +179,7 @@
           <label class="form-label" for="min_stock_level">Low Stock Alert Threshold</label>
           <input type="number" step="1" min="0" id="min_stock_level" name="min_stock_level" class="form-control" 
                  value="{{ product.min_stock_level if product else '5' }}" placeholder="5">
-          <small style="color: var(--text-muted); font-size: 0.75rem;">Flag warning when stock falls below this number</small>
+          <small style="color: var(--text-muted); font-size: 0.74rem;">Flag warning when stock falls below this quantity</small>
         </div>
 
         <div class="form-group" style="margin-bottom: 0;">
@@ -191,7 +203,8 @@
           <i data-lucide="check" style="width: 18px; height: 18px;"></i>
           {% if product %}Save Product Changes{% else %}Save & Create Product{% endif %}
         </button>
-        <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary" style="justify-content: center;">
+        <!-- Primary Form Cancel Button -->
+        <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary" id="btn-cancel-bottom" style="justify-content: center; text-decoration: none; padding: 10px 16px;">
           Cancel
         </a>
       </div>
@@ -232,5 +245,12 @@
   document.getElementById('purchase_price').addEventListener('input', calculateMargin);
   document.getElementById('selling_price').addEventListener('input', calculateMargin);
   calculateMargin();
+
+  // Escape key to navigate back to products list
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      window.location.href = "{{ url_for('inventory.list_products') }}";
+    }
+  });
 </script>
 {% endblock %}

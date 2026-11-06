@@ -246,9 +246,8 @@
     const labels = {{ metrics.sales_labels_7d|tojson }};
     const values = {{ metrics.sales_values_7d|tojson }};
 
-    const isDark = (document.documentElement.getAttribute("data-theme") || "dark") === "dark";
-    const textColor = isDark ? "#94A3B8" : "#64748B";
-    const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+    const textColor = "#64748B";
+    const gridColor = "#E2E8F0";
 
     new Chart(ctx, {
       type: "bar",

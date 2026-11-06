@@ -43,47 +43,35 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =========================================================================
-// THEME SWITCHER (DARK & LIGHT)
+// ENFORCE COMMERCIAL LIGHT THEME
 // =========================================================================
 function initThemeSwitcher() {
-  const themeToggleBtns = document.querySelectorAll(".theme-toggle-btn");
-
-  // Determine current active theme
-  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
-  updateThemeIcons(currentTheme);
-
-  themeToggleBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const activeTheme = document.documentElement.getAttribute("data-theme") || "dark";
-      const newTheme = activeTheme === "dark" ? "light" : "dark";
-
-      document.documentElement.setAttribute("data-theme", newTheme);
-      localStorage.setItem("theme", newTheme);
-
-      updateThemeIcons(newTheme);
-      updateChartThemes(newTheme);
-    });
-  });
+  document.documentElement.setAttribute("data-theme", "light");
+  localStorage.setItem("theme", "light");
 }
 
 function updateThemeIcons(theme) {
-  const themeToggleBtns = document.querySelectorAll(".theme-toggle-btn");
-  themeToggleBtns.forEach((btn) => {
-    btn.innerHTML =
-      theme === "dark"
-        ? '<i data-lucide="sun" style="width: 17px; height: 17px;"></i>'
-        : '<i data-lucide="moon" style="width: 17px; height: 17px;"></i>';
-  });
-
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
+  // Pure light theme - no dark toggle needed
 }
 
 function updateChartThemes(theme) {
-  const isDark = theme === "dark";
-  const textColor = isDark ? "#94A3B8" : "#64748B";
-  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+  const textColor = "#64748B";
+  const gridColor = "#E2E8F0";
+
+  if (cashflowChartInstance) {
+    if (cashflowChartInstance.options.scales.x) {
+      cashflowChartInstance.options.scales.x.ticks.color = textColor;
+    }
+    if (cashflowChartInstance.options.scales.y) {
+      cashflowChartInstance.options.scales.y.ticks.color = textColor;
+      cashflowChartInstance.options.scales.y.grid.color = gridColor;
+    }
+    if (cashflowChartInstance.options.plugins.legend) {
+      cashflowChartInstance.options.plugins.legend.labels.color = textColor;
+    }
+    cashflowChartInstance.update();
+  }
+}
 
   if (cashflowChartInstance) {
     if (cashflowChartInstance.options.scales.x) {
@@ -284,9 +272,8 @@ function initAnalyticsCharts() {
     }
   }
 
-  const isDark = (document.documentElement.getAttribute("data-theme") || "dark") === "dark";
-  const textColor = isDark ? "#94A3B8" : "#64748B";
-  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "#E2E8F0";
+  const textColor = "#64748B";
+  const gridColor = "#E2E8F0";
 
   // --- Cashflow Trend Chart ---
   if (cashflowCtx && typeof Chart !== "undefined") {

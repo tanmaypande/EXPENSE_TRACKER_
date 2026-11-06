@@ -1,49 +1,75 @@
 {% extends "base.html" %}
 
-{% block title %}Financial Reports & Accounting P&L - ShopLedger{% endblock %}
+{% block title %}Accounting Reports & Financial Statements - ShopLedger{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    .sidebar, .topbar, .content-header .btn, .date-filter-bar, .no-print {
+      display: none !important;
+    }
+    .main-wrapper {
+      margin-left: 0 !important;
+      padding: 0 !important;
+    }
+    .app-layout {
+      display: block !important;
+    }
+    .card {
+      box-shadow: none !important;
+      border: 1px solid #ccc !important;
+      page-break-inside: avoid;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="content-header">
   <div>
-    <h1 class="page-title">Financial Statements & Accounting Reports</h1>
-    <p class="page-subtitle">Commercial Profit & Loss statement based on actual COGS snapshots, GST tax summaries, and inventory valuation.</p>
+    <h1 class="page-title">Accounting Reports & Financial Analytics</h1>
+    <p class="page-subtitle">Standard commercial Profit & Loss statement, GST tax liabilities, monthly trends, and stock valuation.</p>
   </div>
-  <div style="display: flex; gap: 10px;">
+  <div style="display: flex; gap: 10px; align-items: center;" class="no-print">
+    <button type="button" class="btn btn-secondary" onclick="window.print()">
+      <i data-lucide="printer" style="width: 15px; height: 15px;"></i> Print Statement
+    </button>
     <a href="{{ url_for('reports.export_sales_csv') }}" class="btn btn-primary">
       <i data-lucide="download" style="width: 16px; height: 16px;"></i> Export Sales CSV
     </a>
   </div>
 </div>
 
-<!-- Date Range Filter Card -->
-<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
-  <form method="GET" action="{{ url_for('reports.index') }}" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+<!-- Date Range Filter & Quick Presets -->
+<div class="card date-filter-bar" style="padding: 16px 20px; margin-bottom: 24px;">
+  <form id="filterForm" method="GET" action="{{ url_for('reports.index') }}" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
     <div style="display: flex; align-items: center; gap: 8px;">
-      <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Period:</label>
-      <input type="date" name="start_date" class="form-control" value="{{ start_date or '' }}" title="Start Date">
+      <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Period:</span>
+      <input type="date" id="startDateInput" name="start_date" class="form-control" value="{{ start_date or '' }}" title="Start Date">
       <span style="color: var(--text-muted); font-size: 0.85rem;">to</span>
-      <input type="date" name="end_date" class="form-control" value="{{ end_date or '' }}" title="End Date">
+      <input type="date" id="endDateInput" name="end_date" class="form-control" value="{{ end_date or '' }}" title="End Date">
     </div>
 
     <button type="submit" class="btn btn-secondary">
       <i data-lucide="filter" style="width: 15px; height: 15px;"></i> Apply Filter
     </button>
     {% if start_date or end_date %}
-      <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">Clear Filter</a>
+      <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">All-Time</a>
     {% endif %}
 
-    <div style="margin-left: auto; font-size: 0.82rem; color: var(--text-muted);">
-      {% if start_date or end_date %}
-        Showing custom period: {{ start_date or 'Start' }} to {{ end_date or 'Present' }}
-      {% else %}
-        Showing All-Time Accounting Records
-      {% endif %}
+    <!-- Quick Presets -->
+    <div style="display: flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap;">
+      <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Quick Presets:</span>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset('today')">Today</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset('this_month')">This Month</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="setPreset('last_month')">Last Month</button>
     </div>
   </form>
 </div>
 
-<!-- Primary Financial KPIs -->
-<div class="kpi-grid">
+<!-- 5 Primary Financial Summary KPI Cards -->
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 24px;">
+  <!-- Total Revenue -->
   <div class="kpi-card">
     <div class="kpi-header">
       <span class="kpi-title">Gross Sales Revenue</span>
@@ -51,58 +77,120 @@
         <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value">₹{{ "%.2f"|format(pnl.gross_sales) }}</div>
-    <div class="kpi-meta">{{ pnl.total_invoices }} customer invoices</div>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(pnl.gross_sales) }}</div>
+    <div class="kpi-meta">Gross billing turnover</div>
   </div>
 
-  <div class="kpi-card">
+  <!-- Operating Overheads -->
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
     <div class="kpi-header">
-      <span class="kpi-title">Cost of Goods Sold (COGS)</span>
-      <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B;">
-        <i data-lucide="package" style="width: 20px; height: 20px;"></i>
-      </div>
-    </div>
-    <div class="kpi-value" style="color: #F59E0B;">₹{{ "%.2f"|format(pnl.cogs) }}</div>
-    <div class="kpi-meta">Cost of inventory sold</div>
-  </div>
-
-  <div class="kpi-card">
-    <div class="kpi-header">
-      <span class="kpi-title">Operational Expenses</span>
+      <span class="kpi-title">Operating Expenses</span>
       <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
         <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value" style="color: var(--accent-red);">₹{{ "%.2f"|format(pnl.total_expenses) }}</div>
-    <div class="kpi-meta">Rent, wages & overheads</div>
+    <div class="kpi-value" style="color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(pnl.total_expenses) }}</div>
+    <div class="kpi-meta">Rent, staff & utilities</div>
   </div>
 
+  <!-- Net Commercial Profit -->
   <div class="kpi-card" style="border-left: 3px solid {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %};">
     <div class="kpi-header">
-      <span class="kpi-title">Net Commercial Profit</span>
+      <span class="kpi-title">Net Accounting Profit</span>
       <div class="kpi-icon" style="background: {% if pnl.net_profit >= 0 %}rgba(16, 185, 129, 0.12){% else %}rgba(239, 68, 68, 0.12){% endif %}; color: {% if pnl.net_profit >= 0 %}#10B981{% else %}#EF4444{% endif %};">
         <i data-lucide="trending-up" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value" style="color: {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %};">
+    <div class="kpi-value" style="color: {% if pnl.net_profit >= 0 %}var(--accent-green){% else %}var(--accent-red){% endif %}; font-family: 'JetBrains Mono', monospace;">
       ₹{{ "%.2f"|format(pnl.net_profit) }}
     </div>
     <div class="kpi-meta">
       Net Margin: <strong>{{ pnl.net_margin_pct }}%</strong>
     </div>
   </div>
+
+  <!-- Outstanding Receivables (Khata) -->
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Outstanding Receivables</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="arrow-down-left" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(dues.total_receivable) }}</div>
+    <div class="kpi-meta">Customer Khata to collect</div>
+  </div>
+
+  <!-- Outstanding Payables (Vendors) -->
+  <div class="kpi-card" style="border-left: 3px solid #F59E0B;">
+    <div class="kpi-header">
+      <span class="kpi-title">Outstanding Payables</span>
+      <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B;">
+        <i data-lucide="arrow-up-right" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: #F59E0B; font-family: 'JetBrains Mono', monospace;">₹{{ "%.2f"|format(dues.total_payable) }}</div>
+    <div class="kpi-meta">Pending outward supplier dues</div>
+  </div>
 </div>
 
+<!-- Interactive Financial Charts (Income vs Expense Trends & Category Donut) -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;" class="no-print">
+  
+  <!-- 6-Month Income vs Expense Bar Chart -->
+  <div class="card" style="padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h3 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="bar-chart-3" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Revenue vs Expense Monthly Trends
+        </h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">Last 6 months commercial performance</p>
+      </div>
+    </div>
+    <div style="position: relative; height: 260px; width: 100%;">
+      <canvas id="monthlyTrendsChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Expense Category Donut Chart -->
+  <div class="card" style="padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h3 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="pie-chart" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+          Expense Distribution
+        </h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">Where shop overheads are spent</p>
+      </div>
+    </div>
+    {% if pnl.expense_categories and pnl.expense_categories|length > 0 %}
+      <div style="position: relative; height: 260px; width: 100%;">
+        <canvas id="expenseCategoryChart"></canvas>
+      </div>
+    {% else %}
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: var(--text-muted); text-align: center;">
+        <i data-lucide="wallet" style="width: 36px; height: 36px; opacity: 0.3; margin-bottom: 8px;"></i>
+        <p style="font-size: 0.85rem;">No expenses recorded in this period.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Detailed Accounting Statements -->
 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
   
   <!-- Left Column: Detailed P&L Statement -->
   <div class="card" style="padding: 0; overflow: hidden;">
-    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
       <h3 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
         <i data-lucide="file-spreadsheet" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
         Standard Profit & Loss Statement (P&L)
       </h3>
-      <span style="font-size: 0.8rem; color: var(--text-muted);">Real DB Accounting</span>
+      <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.75rem;">
+        Real DB Accounting
+      </span>
     </div>
 
     <div class="table-container">
@@ -176,11 +264,11 @@
   <!-- Right Column: GST & Stock Valuation -->
   <div style="display: flex; flex-direction: column; gap: 24px;">
     
-    <!-- GST Tax Summary Card -->
+    <!-- GST Tax Breakdown Card -->
     <div class="card">
       <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
         <i data-lucide="landmark" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
-        GST Tax Breakdown
+        GST Compliance & Tax Breakdown
       </h3>
 
       <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
@@ -200,7 +288,7 @@
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-          <span style="font-weight: 700; color: var(--text-primary);">Total GST Liability:</span>
+          <span style="font-weight: 700; color: var(--text-primary);">Total Output GST Liability:</span>
           <span style="font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #F59E0B; font-size: 1.1rem;">₹{{ "%.2f"|format(gst.total_tax) }}</span>
         </div>
       </div>
@@ -210,7 +298,7 @@
     <div class="card">
       <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
         <i data-lucide="boxes" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
-        Current Stock Valuation
+        Physical Inventory Valuation
       </h3>
 
       <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
@@ -235,4 +323,141 @@
   </div>
 
 </div>
+
+<!-- Chart.js Scripts -->
+<script>
+  // 1. Monthly Trends Chart (Grouped Bar)
+  const trendsCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
+  const trendsLabels = {{ monthly_trends.labels|tojson }};
+  const salesData = {{ monthly_trends.sales|tojson }};
+  const expData = {{ monthly_trends.expenses|tojson }};
+
+  new Chart(trendsCtx, {
+    type: 'bar',
+    data: {
+      labels: trendsLabels,
+      datasets: [
+        {
+          label: 'Revenue (₹)',
+          data: salesData,
+          backgroundColor: '#10B981',
+          borderRadius: 4
+        },
+        {
+          label: 'Expenses (₹)',
+          data: expData,
+          backgroundColor: '#EF4444',
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: '#475569',
+            boxWidth: 12,
+            font: { size: 11, family: 'Inter' }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ₹${context.raw.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748B', font: { size: 11, family: 'Inter' } }
+        },
+        y: {
+          grid: { color: '#E2E8F0' },
+          ticks: {
+            color: '#64748B',
+            font: { size: 10, family: 'JetBrains Mono' },
+            callback: function(val) { return '₹' + val; }
+          }
+        }
+      }
+    }
+  });
+
+  // 2. Expense Category Donut Chart
+  {% if pnl.expense_categories and pnl.expense_categories|length > 0 %}
+  const catCtx = document.getElementById('expenseCategoryChart').getContext('2d');
+  const catLabels = {{ pnl.expense_categories|map(attribute='category')|list|tojson }};
+  const catData = {{ pnl.expense_categories|map(attribute='cat_total')|list|tojson }};
+
+  const palette = [
+    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
+    '#EC4899', '#06B6D4', '#14B8A6', '#64748B'
+  ];
+
+  new Chart(catCtx, {
+    type: 'doughnut',
+    data: {
+      labels: catLabels,
+      datasets: [{
+        data: catData,
+        backgroundColor: palette.slice(0, catLabels.length),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#475569',
+            boxWidth: 10,
+            font: { size: 10, family: 'Inter' }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.label}: ₹${context.raw.toFixed(2)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+  {% endif %}
+
+  // Presets Helper
+  function setPreset(type) {
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    let start = '';
+    let end = fmt(today);
+
+    if (type === 'today') {
+      start = end;
+    } else if (type === 'this_month') {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      start = fmt(first);
+    } else if (type === 'last_month') {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const last = new Date(today.getFullYear(), today.getMonth(), 0);
+      start = fmt(first);
+      end = fmt(last);
+    }
+
+    document.getElementById('startDateInput').value = start;
+    document.getElementById('endDateInput').value = end;
+    document.getElementById('filterForm').submit();
+  }
+</script>
 {% endblock %}

@@ -201,10 +201,32 @@
 
 <script>
   function openExpenseModal() {
-    document.getElementById('expenseModal').style.display = 'flex';
+    const m = document.getElementById('expenseModal');
+    m.style.display = 'flex';
+    m.classList.add('show');
+    setTimeout(() => {
+      document.getElementById('exp_amount').focus();
+    }, 100);
   }
   function closeExpenseModal() {
-    document.getElementById('expenseModal').style.display = 'none';
+    const m = document.getElementById('expenseModal');
+    m.style.display = 'none';
+    m.classList.remove('show');
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeExpenseModal();
+    }
+  });
+
+  const expModalEl = document.getElementById('expenseModal');
+  if (expModalEl) {
+    expModalEl.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeExpenseModal();
+      }
+    });
   }
 </script>
 {% endblock %}

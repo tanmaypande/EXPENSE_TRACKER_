@@ -7,18 +7,18 @@
 
   <!-- Action Bar -->
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-    <a href="{{ url_for('invoices.list_invoices') }}" class="btn-secondary">
-      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
-      <span>Back to Invoices</span>
+    <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">
+      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Back to Invoices
     </a>
-    <div style="display: flex; gap: 8px;">
-      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='thermal') }}" target="_blank" class="btn-secondary">
-        <i data-lucide="receipt" style="width: 14px; height: 14px;"></i>
-        <span>Thermal Slip (80mm)</span>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <a href="{{ url_for('returns.index') }}" class="btn btn-secondary" title="Process Item Return or Customer Refund">
+        <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> Return / Refund
       </a>
-      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='a4') }}" target="_blank" class="btn-primary" style="background: var(--accent-green);">
-        <i data-lucide="printer" style="width: 15px; height: 15px;"></i>
-        <span>Print Tax Invoice (A4)</span>
+      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='thermal') }}" target="_blank" class="btn btn-secondary">
+        <i data-lucide="receipt" style="width: 14px; height: 14px;"></i> Thermal Slip (80mm)
+      </a>
+      <a href="{{ url_for('invoices.print_invoice', id=sale.id, format='a4') }}" target="_blank" class="btn btn-primary">
+        <i data-lucide="printer" style="width: 15px; height: 15px;"></i> Print Tax Invoice (A4)
       </a>
     </div>
   </div>

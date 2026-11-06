@@ -6,14 +6,14 @@
 <div class="content-header">
   <div>
     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-      <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+      <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary btn-sm">
         <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Suppliers
       </a>
       <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
-      <span style="color: var(--text-muted); font-size: 0.85rem;">Purchase Orders</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Inward Purchases</span>
     </div>
     <h1 class="page-title">Inward Purchases & Stock Receiving</h1>
-    <p class="page-subtitle">Track wholesale inventory orders, vendor invoices, and delivery receipts.</p>
+    <p class="page-subtitle">Track wholesale procurement bills, vendor delivery receipts, and supplier payment balances.</p>
   </div>
   <div>
     <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-primary">
@@ -22,9 +22,66 @@
   </div>
 </div>
 
-<!-- Purchases Table -->
+<!-- Calculate Financial KPI Totals -->
+{% set total_purchase_val = 0.0 %}
+{% set total_paid_val = 0.0 %}
+{% set total_due_val = 0.0 %}
+{% for p in purchases %}
+  {% set total_purchase_val = total_purchase_val + (p.total_amount or 0.0) %}
+  {% set total_paid_val = total_paid_val + (p.paid_amount or 0.0) %}
+  {% set total_due_val = total_due_val + (p.balance_amount or 0.0) %}
+{% endfor %}
+
+<!-- 4 KPI Summary Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Inward Orders</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="shopping-bag" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ purchases|length }}</div>
+    <div class="kpi-meta">Recorded vendor invoices</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Purchase Value</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="indian-rupee" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_purchase_val) }}</div>
+    <div class="kpi-meta">Gross cost of inventory purchased</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Amount Paid</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_paid_val) }}</div>
+    <div class="kpi-meta">Settled to distributors</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Outstanding Payables</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red); font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_due_val) }}</div>
+    <div class="kpi-meta">Pending balance due to suppliers</div>
+  </div>
+</div>
+
+<!-- Purchases Table Card -->
 <div class="card" style="padding: 0; overflow: hidden;">
-  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FFFFFF;">
     <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
       <i data-lucide="shopping-bag" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
       All Inward Stock Invoices
@@ -37,11 +94,11 @@
       <thead>
         <tr>
           <th>Purchase / PO #</th>
-          <th>Date</th>
-          <th>Supplier</th>
-          <th>Total Cost</th>
-          <th>Paid</th>
-          <th>Balance Due</th>
+          <th>Invoice Date</th>
+          <th>Supplier / Vendor</th>
+          <th style="text-align: right;">Total Bill</th>
+          <th style="text-align: right;">Paid</th>
+          <th style="text-align: right;">Balance Due</th>
           <th>Payment Mode</th>
           <th>Status</th>
         </tr>
@@ -51,35 +108,40 @@
           {% for p in purchases %}
           <tr>
             <td>
-              <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary);">
+              <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-main);">
                 {{ p.purchase_number }}
               </span>
             </td>
-            <td style="font-size: 0.82rem; color: var(--text-muted);">
+            <td style="font-size: 0.82rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
               {{ p.created_at[:10] if p.created_at else '' }}
             </td>
             <td>
-              <div style="font-weight: 600; color: var(--text-primary);">
-                {{ p.supplier_name or 'Direct Purchase / Counter' }}
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: var(--radius-sm); background: #EFF6FF; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: #2563EB; font-weight: 600; font-size: 0.75rem;">
+                  {{ (p.supplier_name or 'D')[0]|upper }}
+                </div>
+                <div style="font-weight: 600; color: var(--text-main);">
+                  {{ p.supplier_name or 'Direct Purchase / Counter' }}
+                </div>
               </div>
             </td>
-            <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">
-              ₹{{ "%.2f"|format(p.total_amount) }}
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text-main);">
+              {{ business.currency }}{{ "{:,.2f}".format(p.total_amount) }}
             </td>
-            <td style="font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
-              ₹{{ "%.2f"|format(p.paid_amount) }}
+            <td style="text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">
+              {{ business.currency }}{{ "{:,.2f}".format(p.paid_amount) }}
             </td>
-            <td style="font-family: 'JetBrains Mono', monospace; color: {% if p.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %};">
-              ₹{{ "%.2f"|format(p.balance_amount) }}
+            <td style="text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: {% if p.balance_amount > 0 %}var(--accent-red){% else %}var(--text-muted){% endif %};">
+              {{ business.currency }}{{ "{:,.2f}".format(p.balance_amount) }}
             </td>
             <td>
-              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem;">
+              <span class="badge" style="background: #F1F5F9; border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem; color: #475569;">
                 {{ p.payment_method }}
               </span>
             </td>
             <td>
               {% if p.status == 'received' or p.balance_amount == 0 %}
-                <span class="badge badge-paid">Received</span>
+                <span class="badge badge-paid">Fully Settled</span>
               {% else %}
                 <span class="badge badge-partial">Credit / Dues</span>
               {% endif %}
@@ -88,11 +150,13 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
-              <i data-lucide="shopping-bag" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
-              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Inward Purchases Recorded Yet</p>
-              <p style="font-size: 0.85rem;">Record supplier purchase bills to automatically restock your inventory and track cost of goods sold.</p>
-              <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-primary btn-sm" style="margin-top: 14px;">
+            <td colspan="8" style="text-align: center; padding: 56px 24px; color: var(--text-muted);">
+              <div style="width: 54px; height: 54px; border-radius: var(--radius-full); background: #F1F5F9; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                <i data-lucide="shopping-bag" style="width: 26px; height: 26px; color: var(--text-muted);"></i>
+              </div>
+              <h3 style="font-weight: 600; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">No Inward Purchases Recorded Yet</h3>
+              <p style="font-size: 0.88rem; max-width: 440px; margin: 0 auto 16px;">Record supplier purchase bills to automatically restock your inventory quantities and track Cost of Goods Sold.</p>
+              <a href="{{ url_for('suppliers.new_purchase') }}" class="btn btn-primary btn-sm">
                 <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Inward Stock First Order
               </a>
             </td>

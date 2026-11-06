@@ -6,14 +6,14 @@
 <div class="content-header">
   <div>
     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-      <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm" style="padding: 4px 8px;">
+      <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm">
         <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Products
       </a>
       <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
-      <span style="color: var(--text-muted); font-size: 0.85rem;">Audit Trail</span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Stock Audit Trail</span>
     </div>
     <h1 class="page-title">Stock Movements & Inventory Audit Log</h1>
-    <p class="page-subtitle">Complete ledger of every stock addition, POS sale deduction, return restock, and manual inventory adjustment.</p>
+    <p class="page-subtitle">Full immutable ledger tracking every stock addition, POS billing deduction, return restock, and manual inventory adjustment.</p>
   </div>
   <div>
     <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary">
@@ -22,13 +22,76 @@
   </div>
 </div>
 
+<!-- Calculate Movement KPI Metrics -->
+{% set total_movements = movements|length %}
+{% set count_sales = 0 %}
+{% set count_inward = 0 %}
+{% set count_adjustments = 0 %}
+{% for m in movements %}
+  {% if m.reason == 'sale' %}
+    {% set count_sales = count_sales + 1 %}
+  {% elif m.reason == 'purchase' %}
+    {% set count_inward = count_inward + 1 %}
+  {% else %}
+    {% set count_adjustments = count_adjustments + 1 %}
+  {% endif %}
+{% endfor %}
+
+<!-- 4 KPI Summary Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Audit Log Entries</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="history" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value">{{ total_movements }}</div>
+    <div class="kpi-meta">Recorded stock state changes</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-green);">
+    <div class="kpi-header">
+      <span class="kpi-title">Inward Deliveries</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="truck" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green);">{{ count_inward }}</div>
+    <div class="kpi-meta">Supplier restocks received</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid #3B82F6;">
+    <div class="kpi-header">
+      <span class="kpi-title">POS Sales Deductions</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="shopping-cart" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: #2563EB;">{{ count_sales }}</div>
+    <div class="kpi-meta">Counter billing dispatches</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid #F59E0B;">
+    <div class="kpi-header">
+      <span class="kpi-title">Stock Adjustments</span>
+      <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B;">
+        <i data-lucide="sliders" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: #D97706;">{{ count_adjustments }}</div>
+    <div class="kpi-meta">Manual corrections & write-offs</div>
+  </div>
+</div>
+
+<!-- Audit Log Table Card -->
 <div class="card" style="padding: 0; overflow: hidden;">
-  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FFFFFF;">
     <div style="font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
       <i data-lucide="history" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
-      Latest Inventory Audit Logs
+      Stock Audit Movement Records
     </div>
-    <span style="font-size: 0.82rem; color: var(--text-muted);">Showing recent {{ movements|length }} records</span>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ movements|length }} Events Logged</span>
   </div>
 
   <div class="table-container">
@@ -38,43 +101,43 @@
           <th>Date & Time</th>
           <th>Product</th>
           <th>SKU</th>
-          <th>Type</th>
+          <th>Movement Type</th>
           <th>Quantity Change</th>
-          <th>Before → After</th>
-          <th>Reason / Notes</th>
+          <th>Stock Transition</th>
+          <th>Reason / Reference Notes</th>
         </tr>
       </thead>
       <tbody>
         {% if movements %}
           {% for m in movements %}
           <tr>
-            <td style="white-space: nowrap; font-size: 0.85rem; color: var(--text-muted);">
+            <td style="white-space: nowrap; font-size: 0.84rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
               {{ m.created_at }}
             </td>
             <td>
-              <div style="font-weight: 600; color: var(--text-primary);">{{ m.product_name }}</div>
+              <div style="font-weight: 600; color: var(--text-main);">{{ m.product_name }}</div>
             </td>
             <td>
-              <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace;">
+              <span class="badge" style="background: #F1F5F9; border: 1px solid var(--border-color); color: #475569; font-family: 'JetBrains Mono', monospace;">
                 {{ m.sku or '—' }}
               </span>
             </td>
             <td>
               {% if m.reason == 'sale' %}
-                <span class="badge" style="background: rgba(239, 68, 68, 0.12); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.25);">
+                <span class="badge" style="background: #EFF6FF; color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.2);">
                   <i data-lucide="shopping-cart" style="width: 12px; height: 12px;"></i> POS Sale
                 </span>
               {% elif m.reason == 'purchase' %}
-                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25);">
+                <span class="badge badge-paid">
                   <i data-lucide="truck" style="width: 12px; height: 12px;"></i> Inward Stock
                 </span>
               {% elif m.reason == 'return' %}
-                <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.25);">
+                <span class="badge" style="background: #F5F3FF; color: #7C3AED; border: 1px solid rgba(124, 58, 237, 0.2);">
                   <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Return Restock
                 </span>
               {% else %}
-                <span class="badge" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.25);">
-                  <i data-lucide="sliders" style="width: 12px; height: 12px;"></i> {{ m.reason or 'Adjustment' }}
+                <span class="badge" style="background: #FFFBEB; color: #D97706; border: 1px solid rgba(217, 119, 6, 0.2);">
+                  <i data-lucide="sliders" style="width: 12px; height: 12px;"></i> {{ m.reason|capitalize or 'Adjustment' }}
                 </span>
               {% endif %}
             </td>
@@ -86,7 +149,7 @@
               {% endif %}
             </td>
             <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-muted);">
-              {{ ((m.new_stock - m.change_qty)|round(2)) }} → <span style="font-weight: 600; color: var(--text-primary);">{{ m.new_stock }}</span>
+              {{ ((m.new_stock - m.change_qty)|round(2)) }} → <span style="font-weight: 700; color: var(--text-main);">{{ m.new_stock }} {{ m.unit or 'pcs' }}</span>
             </td>
             <td style="font-size: 0.85rem; color: var(--text-muted);">
               {{ m.notes or m.reference_id or '—' }}
@@ -95,10 +158,12 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="7" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
-              <i data-lucide="history" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3;"></i>
-              <p style="font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Stock Movements Yet</p>
-              <p style="font-size: 0.85rem;">Stock movements are logged automatically when billing sales, adding purchases, or adjusting counts.</p>
+            <td colspan="7" style="text-align: center; padding: 56px 24px; color: var(--text-muted);">
+              <div style="width: 54px; height: 54px; border-radius: var(--radius-full); background: #F1F5F9; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                <i data-lucide="history" style="width: 26px; height: 26px; color: var(--text-muted);"></i>
+              </div>
+              <h3 style="font-weight: 600; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">No Stock Movements Yet</h3>
+              <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto;">Stock movements are logged automatically when billing sales, adding purchases, or adjusting inventory counts.</p>
             </td>
           </tr>
         {% endif %}

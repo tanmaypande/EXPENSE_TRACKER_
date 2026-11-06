@@ -1,178 +1,283 @@
 {% extends "base.html" %}
 
-{% block title %}Inventory & Products - {{ business.name }} | ShopLedger{% endblock %}
+{% block title %}Product Catalog & Inventory - {{ business.name }} | ShopLedger{% endblock %}
 
 {% block content %}
-<div style="display: flex; flex-direction: column; gap: 20px;">
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Product Catalog & Inventory Management</h1>
+    <p class="page-subtitle">Manage SKU items, barcodes, retail pricing, cost of goods, stock thresholds and category groupings.</p>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <a href="{{ url_for('inventory.stock_history') }}" class="btn btn-secondary">
+      <i data-lucide="history" style="width: 15px; height: 15px;"></i> Stock Audit Log
+    </a>
+    <a href="{{ url_for('inventory.add_product') }}" class="btn btn-primary">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Add New Product
+    </a>
+  </div>
+</div>
 
-  <!-- Header -->
-  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-    <div>
-      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Product Catalog & Inventory</h2>
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Manage SKU, pricing, stock levels and categories</p>
+<!-- Calculate Inventory KPI Metrics -->
+{% set total_items = products|length %}
+{% set low_stock_count = 0 %}
+{% set out_of_stock_count = 0 %}
+{% set total_valuation = 0.0 %}
+{% for p in products %}
+  {% if p.stock_quantity <= 0 %}
+    {% set out_of_stock_count = out_of_stock_count + 1 %}
+  {% elif p.stock_quantity <= p.min_stock_level %}
+    {% set low_stock_count = low_stock_count + 1 %}
+  {% endif %}
+  {% set total_valuation = total_valuation + (p.stock_quantity * p.purchase_price) %}
+{% endfor %}
+
+<!-- 4 KPI Summary Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Catalog Products</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="package" style="width: 20px; height: 20px;"></i>
+      </div>
     </div>
-    <div style="display: flex; gap: 10px;">
-      <a href="{{ url_for('inventory.stock_history') }}" class="btn-secondary">
-        <i data-lucide="history" style="width: 15px; height: 15px;"></i>
-        <span>Stock Audit Log</span>
-      </a>
-      <a href="{{ url_for('inventory.add_product') }}" class="btn-primary" style="background: var(--accent-green);">
-        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-        <span>Add Product</span>
-      </a>
-    </div>
+    <div class="kpi-value">{{ total_items }}</div>
+    <div class="kpi-meta">Active SKU entries in shop</div>
   </div>
 
-  <!-- Filters Toolbar -->
-  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-    <form method="GET" action="{{ url_for('inventory.list_products') }}" style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1;">
-      <div style="position: relative; width: 260px;">
-        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-faint);"></i>
-        <input type="text" name="search" class="form-input" style="padding-left: 32px; height: 36px;" value="{{ search }}" placeholder="Search by name, SKU, or barcode...">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Estimated Stock Value</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="indian-rupee" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_valuation) }}</div>
+    <div class="kpi-meta">Current inventory purchase cost</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid #F59E0B;">
+    <div class="kpi-header">
+      <span class="kpi-title">Low Stock Alerts</span>
+      <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B;">
+        <i data-lucide="alert-triangle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: #D97706;">{{ low_stock_count }}</div>
+    <div class="kpi-meta">Below reorder safety threshold</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-red);">
+    <div class="kpi-header">
+      <span class="kpi-title">Out of Stock</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="x-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-red);">{{ out_of_stock_count }}</div>
+    <div class="kpi-meta">Requires urgent inward purchase</div>
+  </div>
+</div>
+
+<!-- Filters Toolbar Card -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
+  <form method="GET" action="{{ url_for('inventory.list_products') }}" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex: 1; min-width: 280px;">
+      <div style="position: relative; flex: 1; min-width: 220px; max-width: 360px;">
+        <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-faint);"></i>
+        <input type="text" name="search" class="form-control" style="padding-left: 36px;" value="{{ search }}" placeholder="Search by name, SKU, or barcode...">
       </div>
 
-      <select name="category_id" class="filter-select" style="height: 36px;" onchange="this.form.submit()">
-        <option value="">All Categories</option>
-        {% for c in categories %}
-          <option value="{{ c.id }}" {% if selected_category == c.id %}selected{% endif %}>{{ c.name }}</option>
-        {% endfor %}
-      </select>
+      <div style="min-width: 180px;">
+        <select name="category_id" class="form-control" onchange="this.form.submit()">
+          <option value="">-- All Categories --</option>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {% if selected_category == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-      <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-main); cursor: pointer;">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--text-main); font-weight: 500; cursor: pointer; user-select: none; padding: 6px 10px; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
         <input type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %} onchange="this.form.submit()">
         <span>Low Stock Only</span>
       </label>
+    </div>
 
-      <button type="submit" class="btn-secondary" style="height: 36px;">Filter</button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button type="submit" class="btn btn-secondary">
+        <i data-lucide="filter" style="width: 14px; height: 14px;"></i> Filter
+      </button>
       {% if search or selected_category or low_stock %}
-        <a href="{{ url_for('inventory.list_products') }}" class="btn-secondary" style="height: 36px;">Reset</a>
+        <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary">Reset</a>
       {% endif %}
-    </form>
+    </div>
+  </form>
+</div>
+
+<!-- Products Table Card -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FFFFFF;">
+    <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="package" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      Products Directory
+    </h3>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ products|length }} Products</span>
   </div>
 
-  <!-- Products Table -->
-  <div class="transactions-section">
-    <div class="table-responsive">
-      <table class="fintech-table">
-        <thead>
-          <tr>
-            <th>Product Name</th>
-            <th>SKU / Barcode</th>
-            <th>Category</th>
-            <th style="text-align: right;">Cost Price</th>
-            <th style="text-align: right;">Selling Price</th>
-            <th>GST %</th>
-            <th style="text-align: center;">Stock</th>
-            <th>Status</th>
-            <th style="text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if products and products|length > 0 %}
-            {% for p in products %}
-              <tr>
-                <td>
-                  <div style="font-weight: 600; color: var(--text-main);">{{ p.name }}</div>
-                  {% if p.brand %}
-                    <span style="font-size: 0.72rem; color: var(--text-muted);">{{ p.brand }}</span>
-                  {% endif %}
-                </td>
-                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-muted);">
-                  {{ p.sku or '-' }}
-                  {% if p.barcode %}
-                    <span style="display: block; font-size: 0.7rem; color: var(--text-faint);">BC: {{ p.barcode }}</span>
-                  {% endif %}
-                </td>
-                <td>
-                  <span class="category-pill">{{ p.category_name or 'Uncategorized' }}</span>
-                </td>
-                <td style="text-align: right; color: var(--text-muted);">
-                  {{ business.currency }}{{ "{:,.2f}".format(p.purchase_price) }}
-                </td>
-                <td style="text-align: right; font-weight: 700; color: var(--text-main);">
-                  {{ business.currency }}{{ "{:,.2f}".format(p.selling_price) }}
-                </td>
-                <td>{{ p.tax_rate }}%</td>
-                <td style="text-align: center; font-weight: 700;">
-                  <span style="color: {{ 'var(--accent-red-text)' if p.stock_quantity <= p.min_stock_level else 'var(--text-main)' }};">
-                    {{ p.stock_quantity }} {{ p.unit }}
-                  </span>
-                </td>
-                <td>
-                  {% if p.stock_quantity <= 0 %}
-                    <span class="badge-status badge-unpaid">Out of Stock</span>
-                  {% elif p.stock_quantity <= p.min_stock_level %}
-                    <span class="badge-status badge-low-stock">Low Stock</span>
-                  {% else %}
-                    <span class="badge-status badge-paid">In Stock</span>
-                  {% endif %}
-                </td>
-                <td style="text-align: right;">
-                  <div class="actions-cell">
-                    <!-- Quick Stock Adjust Button -->
-                    <button class="table-action-btn btn-stock-adjust" data-id="{{ p.id }}" data-name="{{ p.name }}" data-stock="{{ p.stock_quantity }}" title="Adjust Stock">
-                      <i data-lucide="sliders" style="width: 14px; height: 14px;"></i>
-                    </button>
-                    <!-- Edit Product -->
-                    <a href="{{ url_for('inventory.edit_product', id=p.id) }}" class="table-action-btn" title="Edit Product">
-                      <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          {% else %}
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product Name & Brand</th>
+          <th>SKU / Barcode</th>
+          <th>Category</th>
+          <th style="text-align: right;">Cost Price</th>
+          <th style="text-align: right;">Selling Price</th>
+          <th>GST Tax</th>
+          <th style="text-align: center;">In Stock</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if products and products|length > 0 %}
+          {% for p in products %}
             <tr>
-              <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                No products found. Click <a href="{{ url_for('inventory.add_product') }}" style="color: var(--accent-green-text); font-weight: 600;">+ Add Product</a> to create catalog entries.
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 34px; height: 34px; border-radius: var(--radius-md); background: #F1F5F9; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #475569; font-weight: 600; font-size: 0.85rem;">
+                    {{ p.name[0]|upper }}
+                  </div>
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-main);">{{ p.name }}</div>
+                    {% if p.brand %}
+                      <span style="font-size: 0.74rem; color: var(--text-muted);">{{ p.brand }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text-main); font-weight: 500;">
+                  {{ p.sku or '—' }}
+                </div>
+                {% if p.barcode %}
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted);">BC: {{ p.barcode }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="category-pill">{{ p.category_name or 'General' }}</span>
+              </td>
+              <td style="text-align: right; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+                {{ business.currency }}{{ "{:,.2f}".format(p.purchase_price) }}
+              </td>
+              <td style="text-align: right; font-weight: 700; color: var(--text-main); font-family: 'JetBrains Mono', monospace;">
+                {{ business.currency }}{{ "{:,.2f}".format(p.selling_price) }}
+              </td>
+              <td>
+                <span class="badge" style="background: #F1F5F9; color: #475569; border: 1px solid var(--border-color);">
+                  {{ p.tax_rate }}% GST
+                </span>
+              </td>
+              <td style="text-align: center; font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+                <span style="color: {% if p.stock_quantity <= 0 %}var(--accent-red){% elif p.stock_quantity <= p.min_stock_level %}#D97706{% else %}var(--accent-green){% endif %};">
+                  {{ p.stock_quantity }} {{ p.unit }}
+                </span>
+              </td>
+              <td>
+                {% if p.stock_quantity <= 0 %}
+                  <span class="badge badge-unpaid">Out of Stock</span>
+                {% elif p.stock_quantity <= p.min_stock_level %}
+                  <span class="badge badge-low-stock">Low Stock</span>
+                {% else %}
+                  <span class="badge badge-paid">In Stock</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                  <!-- Quick Stock Adjust Button -->
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="openAdjustModal({{ p.id }}, '{{ p.name|replace("'", "\\'") }}', {{ p.stock_quantity }})" title="Quick Stock Adjustment">
+                    <i data-lucide="sliders" style="width: 13px; height: 13px;"></i> Adjust
+                  </button>
+                  <!-- Edit Product -->
+                  <a href="{{ url_for('inventory.edit_product', id=p.id) }}" class="btn btn-secondary btn-sm" title="Edit Product Details">
+                    <i data-lucide="edit-2" style="width: 13px; height: 13px;"></i> Edit
+                  </a>
+                </div>
               </td>
             </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 56px 24px; color: var(--text-muted);">
+              <div style="width: 54px; height: 54px; border-radius: var(--radius-full); background: #F1F5F9; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                <i data-lucide="package" style="width: 26px; height: 26px; color: var(--text-muted);"></i>
+              </div>
+              <h3 style="font-weight: 600; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">No Products Found</h3>
+              <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto 16px;">
+                {% if search or selected_category or low_stock %}
+                  No items match your active search filters. Try clearing the search query or reset filters.
+                {% else %}
+                  Your store catalog is empty. Add your products to start billing at the POS counter and tracking stock.
+                {% endif %}
+              </p>
+              {% if search or selected_category or low_stock %}
+                <a href="{{ url_for('inventory.list_products') }}" class="btn btn-secondary btn-sm">Reset Filters</a>
+              {% else %}
+                <a href="{{ url_for('inventory.add_product') }}" class="btn btn-primary btn-sm">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Add First Product
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
   </div>
-
 </div>
 
 <!-- Stock Adjustment Modal -->
-<div class="modal-backdrop" id="stock-adjust-modal">
-  <div class="modal-card">
+<div class="modal-backdrop" id="stock-adjust-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 480px;">
     <div class="modal-header">
-      <h3 class="modal-title">Adjust Inventory Stock</h3>
-      <button class="modal-close-btn" onclick="document.getElementById('stock-adjust-modal').classList.remove('show')">
-        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
-      </button>
+      <h3 style="font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="sliders" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+        Adjust Inventory Stock
+      </h3>
+      <button type="button" class="btn-close" onclick="closeAdjustModal()" title="Close">&times;</button>
     </div>
     <form action="{{ url_for('inventory.stock_adjustment') }}" method="POST">
-      <div class="modal-body">
+      <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
         <input type="hidden" name="product_id" id="adjust-prod-id">
-        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);" id="adjust-prod-name">Product Name</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);" id="adjust-current-stock">Current Stock: 0</div>
-
-        <div class="form-group" style="margin-top: 10px;">
-          <label class="form-label">Adjustment Quantity (+ or -)</label>
-          <input type="number" step="any" name="quantity" class="form-input" placeholder="e.g. +10 to add, -2 to remove" required autofocus>
+        
+        <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 16px;">
+          <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);" id="adjust-prod-name">Product Name</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;" id="adjust-current-stock">Current Stock: 0</div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Reason</label>
-          <select name="reason" class="filter-select" style="width: 100%; height: 38px;">
-            <option value="adjustment">Stock Count Correction</option>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Adjustment Quantity (+ to Add, - to Remove) *</label>
+          <input type="number" step="any" name="quantity" class="form-control" placeholder="e.g. +10 or -3" required id="adjust-qty-input">
+          <small style="color: var(--text-muted); font-size: 0.74rem;">Enter positive number to restock, or negative number to write off stock.</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Adjustment Reason *</label>
+          <select name="reason" class="form-control" required>
+            <option value="adjustment">Stock Count Correction (Audit)</option>
             <option value="damaged">Damaged / Expired Goods</option>
-            <option value="internal">Store Use / Sample</option>
+            <option value="internal">Store Use / Promotional Sample</option>
             <option value="return_supplier">Return to Supplier</option>
           </select>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Audit Notes</label>
-          <input type="text" name="notes" class="form-input" placeholder="Optional audit memo">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Audit Notes (Optional)</label>
+          <input type="text" name="notes" class="form-control" placeholder="e.g. Month-end inventory verification batch">
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="document.getElementById('stock-adjust-modal').classList.remove('show')">Cancel</button>
-        <button type="submit" class="btn-primary" style="background: var(--accent-green);">Save Adjustment</button>
+        <button type="button" class="btn btn-secondary" onclick="closeAdjustModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Adjustment</button>
       </div>
     </form>
   </div>
@@ -181,18 +286,39 @@
 
 {% block extra_scripts %}
 <script>
-  document.querySelectorAll(".btn-stock-adjust").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-id");
-      const name = btn.getAttribute("data-name");
-      const stock = btn.getAttribute("data-stock");
+  function openAdjustModal(id, name, stock) {
+    document.getElementById("adjust-prod-id").value = id;
+    document.getElementById("adjust-prod-name").textContent = name;
+    document.getElementById("adjust-current-stock").textContent = `Current Physical Stock: ${stock}`;
+    document.getElementById("adjust-qty-input").value = "";
+    
+    const modal = document.getElementById("stock-adjust-modal");
+    modal.style.display = "flex";
+    modal.classList.add("show");
+    
+    setTimeout(() => {
+      document.getElementById("adjust-qty-input").focus();
+    }, 100);
+  }
 
-      document.getElementById("adjust-prod-id").value = id;
-      document.getElementById("adjust-prod-name").textContent = name;
-      document.getElementById("adjust-current-stock").textContent = `Current Stock: ${stock}`;
+  function closeAdjustModal() {
+    const modal = document.getElementById("stock-adjust-modal");
+    modal.style.display = "none";
+    modal.classList.remove("show");
+  }
 
-      document.getElementById("stock-adjust-modal").classList.add("show");
-    });
+  // Backdrop click listener to dismiss modal
+  document.getElementById("stock-adjust-modal").addEventListener("click", function(e) {
+    if (e.target === this) {
+      closeAdjustModal();
+    }
+  });
+
+  // Escape key to dismiss modal
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      closeAdjustModal();
+    }
   });
 </script>
 {% endblock %}

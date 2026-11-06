@@ -3,98 +3,212 @@
 {% block title %}Invoices & Billing History - {{ business.name }} | ShopLedger{% endblock %}
 
 {% block content %}
-<div style="display: flex; flex-direction: column; gap: 20px;">
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Invoices & Sales Transactions Ledger</h1>
+    <p class="page-subtitle">Search, print, thermal receipt reprint, and audit historical customer sales bills.</p>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <a href="{{ url_for('reports.export_sales_csv') }}" class="btn btn-secondary">
+      <i data-lucide="download" style="width: 15px; height: 15px;"></i> Export Sales CSV
+    </a>
+    <a href="{{ url_for('pos.index') }}" class="btn btn-primary">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Create New Bill (POS)
+    </a>
+  </div>
+</div>
 
-  <!-- Header -->
-  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-    <div>
-      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Invoices & Sales Ledger</h2>
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Search and inspect generated sales invoices</p>
+<!-- Calculate Invoices KPI Metrics -->
+{% set total_inv_count = invoices|length %}
+{% set total_revenue = 0.0 %}
+{% set paid_count = 0 %}
+{% set unpaid_count = 0 %}
+{% for inv in invoices %}
+  {% set total_revenue = total_revenue + (inv.grand_total or 0.0) %}
+  {% if inv.payment_status == 'paid' %}
+    {% set paid_count = paid_count + 1 %}
+  {% else %}
+    {% set unpaid_count = unpaid_count + 1 %}
+  {% endif %}
+{% endfor %}
+
+<!-- 4 KPI Summary Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Invoices</span>
+      <div class="kpi-icon" style="background: rgba(59, 130, 246, 0.12); color: #3B82F6;">
+        <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+      </div>
     </div>
-    <div style="display: flex; gap: 10px;">
-      <a href="{{ url_for('reports.export_sales_csv') }}" class="btn-secondary">
-        <i data-lucide="download" style="width: 15px; height: 15px;"></i>
-        <span>Export CSV</span>
-      </a>
-      <a href="{{ url_for('pos.index') }}" class="btn-primary" style="background: var(--accent-green);">
-        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-        <span>New Bill</span>
-      </a>
-    </div>
+    <div class="kpi-value">{{ total_inv_count }}</div>
+    <div class="kpi-meta">Sales transactions recorded</div>
   </div>
 
-  <!-- Search Filter Bar -->
-  <form method="GET" action="{{ url_for('invoices.list_invoices') }}" style="display: flex; gap: 10px; max-width: 450px;">
-    <div style="position: relative; flex: 1;">
-      <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-faint);"></i>
-      <input type="text" name="search" class="form-input" style="padding-left: 32px; height: 38px;" value="{{ search }}" placeholder="Search by Invoice #, Customer, or Phone...">
+  <div class="kpi-card">
+    <div class="kpi-header">
+      <span class="kpi-title">Gross Sales Turnover</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="indian-rupee" style="width: 20px; height: 20px;"></i>
+      </div>
     </div>
-    <button type="submit" class="btn-secondary" style="height: 38px;">Search</button>
-    {% if search %}
-      <a href="{{ url_for('invoices.list_invoices') }}" class="btn-secondary" style="height: 38px;">Clear</a>
-    {% endif %}
-  </form>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_revenue) }}</div>
+    <div class="kpi-meta">Total billing revenue generated</div>
+  </div>
 
-  <!-- Invoices Table -->
-  <div class="transactions-section">
-    <div class="table-responsive">
-      <table class="fintech-table">
-        <thead>
-          <tr>
-            <th>Invoice No.</th>
-            <th>Customer</th>
-            <th>Phone</th>
-            <th>Items</th>
-            <th>Date & Time</th>
-            <th>Payment</th>
-            <th>Status</th>
-            <th style="text-align: right;">Grand Total</th>
-            <th style="text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if invoices and invoices|length > 0 %}
-            {% for inv in invoices %}
-              <tr>
-                <td style="font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
-                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="color: var(--accent-blue);">{{ inv.invoice_number }}</a>
-                </td>
-                <td style="font-weight: 500;">{{ inv.customer_name or 'Walk-in Customer' }}</td>
-                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ inv.customer_phone or '-' }}</td>
-                <td>{{ inv.item_count }} items</td>
-                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ inv.created_at }}</td>
-                <td style="text-transform: capitalize;">{{ inv.payment_method }}</td>
-                <td>
-                  <span class="badge-status {{ 'badge-paid' if inv.payment_status == 'paid' else ('badge-partial' if inv.payment_status == 'partial' else 'badge-unpaid') }}">
-                    {{ inv.payment_status|capitalize }}
-                  </span>
-                </td>
-                <td style="text-align: right; font-weight: 700; color: var(--accent-green-text);">
-                  {{ business.currency }}{{ "{:,.2f}".format(inv.grand_total) }}
-                </td>
-                <td style="text-align: right;">
-                  <div class="actions-cell">
-                    <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" class="table-action-btn" title="View Bill">
-                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
-                    </a>
-                    <a href="{{ url_for('invoices.print_invoice', id=inv.id) }}" target="_blank" class="table-action-btn" title="Print Invoice">
-                      <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          {% else %}
+  <div class="kpi-card" style="border-left: 3px solid var(--accent-green);">
+    <div class="kpi-header">
+      <span class="kpi-title">Fully Settled</span>
+      <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: var(--accent-green);">{{ paid_count }}</div>
+    <div class="kpi-meta">Paid in full (Cash / UPI / Card)</div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 3px solid {% if unpaid_count > 0 %}var(--accent-red){% else %}var(--border-color){% endif %};">
+    <div class="kpi-header">
+      <span class="kpi-title">Dues / Credit Bills</span>
+      <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #EF4444;">
+        <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="kpi-value" style="color: {% if unpaid_count > 0 %}var(--accent-red){% else %}var(--text-main){% endif %};">{{ unpaid_count }}</div>
+    <div class="kpi-meta">Unpaid or partially settled</div>
+  </div>
+</div>
+
+<!-- Search Filter Bar Card -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
+  <form method="GET" action="{{ url_for('invoices.list_invoices') }}" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <div style="position: relative; flex: 1; min-width: 280px; max-width: 480px;">
+      <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-faint);"></i>
+      <input type="text" name="search" class="form-control" style="padding-left: 36px;" value="{{ search }}" placeholder="Search by Invoice #, Customer Name, or Phone...">
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button type="submit" class="btn btn-secondary">
+        <i data-lucide="search" style="width: 14px; height: 14px;"></i> Search
+      </button>
+      {% if search %}
+        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Invoices Table Card -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FFFFFF;">
+    <h3 style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="receipt" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      All Generated Tax Invoices
+    </h3>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ invoices|length }} Invoices</span>
+  </div>
+
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice No.</th>
+          <th>Customer</th>
+          <th>Phone</th>
+          <th>Items Billed</th>
+          <th>Date & Time</th>
+          <th>Payment Mode</th>
+          <th>Status</th>
+          <th style="text-align: right;">Grand Total</th>
+          <th style="text-align: right; min-width: 220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if invoices and invoices|length > 0 %}
+          {% for inv in invoices %}
             <tr>
-              <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                No invoices found matching your criteria.
+              <td>
+                <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: var(--accent-green); text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                  <i data-lucide="file-text" style="width: 13px; height: 13px;"></i>
+                  {{ inv.invoice_number }}
+                </a>
+              </td>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">{{ inv.customer_name or 'Walk-in Customer' }}</div>
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.82rem; font-family: 'JetBrains Mono', monospace;">
+                {{ inv.customer_phone or '—' }}
+              </td>
+              <td>
+                <span class="badge" style="background: #F1F5F9; border: 1px solid var(--border-color); color: #475569;">
+                  {{ inv.item_count }} {{ 'item' if inv.item_count == 1 else 'items' }}
+                </span>
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">
+                {{ inv.created_at }}
+              </td>
+              <td>
+                <span class="badge" style="background: #F1F5F9; border: 1px solid var(--border-color); text-transform: uppercase; font-size: 0.72rem; color: #475569;">
+                  {{ inv.payment_method }}
+                </span>
+              </td>
+              <td>
+                <span class="badge {{ 'badge-paid' if inv.payment_status == 'paid' else ('badge-partial' if inv.payment_status == 'partial' else 'badge-unpaid') }}">
+                  {{ inv.payment_status|capitalize }}
+                </span>
+              </td>
+              <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text-main); font-size: 0.95rem;">
+                {{ business.currency }}{{ "{:,.2f}".format(inv.grand_total) }}
+              </td>
+              <!-- Prominent Row Action Buttons -->
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" class="btn btn-secondary btn-sm" title="View Full Tax Invoice Details">
+                    <i data-lucide="eye" style="width: 13px; height: 13px;"></i> View
+                  </a>
+                  <a href="{{ url_for('invoices.print_invoice', id=inv.id, format='a4') }}" target="_blank" class="btn btn-secondary btn-sm" title="Print Standard A4 Invoice">
+                    <i data-lucide="printer" style="width: 13px; height: 13px;"></i> Print
+                  </a>
+                  <a href="{{ url_for('invoices.print_invoice', id=inv.id, format='thermal') }}" target="_blank" class="btn btn-secondary btn-sm" title="Print 80mm Thermal Receipt">
+                    <i data-lucide="receipt" style="width: 13px; height: 13px;"></i> Thermal
+                  </a>
+                </div>
               </td>
             </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 56px 24px; color: var(--text-muted);">
+              <div style="width: 54px; height: 54px; border-radius: var(--radius-full); background: #F1F5F9; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                <i data-lucide="receipt" style="width: 26px; height: 26px; color: var(--text-muted);"></i>
+              </div>
+              <h3 style="font-weight: 600; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">No Invoices Found</h3>
+              <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto 16px;">
+                {% if search %}
+                  No invoices matched your search query. Try clearing the search.
+                {% else %}
+                  You have not generated any sales invoices yet. Complete a checkout in POS to generate your first invoice.
+                {% endif %}
+              </p>
+              {% if search %}
+                <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary btn-sm">Clear Search</a>
+              {% else %}
+                <a href="{{ url_for('pos.index') }}" class="btn btn-primary btn-sm">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Open POS Counter
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
   </div>
-
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+</script>
 {% endblock %}
