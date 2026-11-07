@@ -77,6 +77,29 @@
     border-color: var(--accent-green);
     color: var(--accent-green-text);
   }
+  .disc-toggle-btn {
+    padding: 3px 9px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .disc-toggle-btn.active {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #FFFFFF;
+  }
+  .disc-toggle-btn:first-child {
+    border-top-left-radius: var(--radius-sm);
+    border-bottom-left-radius: var(--radius-sm);
+  }
+  .disc-toggle-btn:last-child {
+    border-top-right-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+  }
 
   @media (max-width: 992px) {
     .pos-terminal-grid {
@@ -180,8 +203,18 @@
           <span id="pos-subtotal" style="font-weight: 600; color: var(--text-main);">{{ business.currency }}0.00</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Discount ({{ business.currency }}):</span>
-          <input type="number" id="pos-discount-input" min="0" step="1" value="0" class="form-input" style="width: 80px; height: 26px; text-align: right; font-size: 0.8rem;">
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span>Discount:</span>
+            <div style="display: inline-flex; border-radius: var(--radius-sm); overflow: hidden;">
+              <button type="button" class="disc-toggle-btn active" id="pos-disc-type-fixed" title="Fixed Discount (₹)">{{ business.currency }}</button>
+              <button type="button" class="disc-toggle-btn" id="pos-disc-type-pct" title="Percentage Discount (%)">%</button>
+            </div>
+          </span>
+          <input type="number" id="pos-discount-input" min="0" step="any" value="0" class="form-input" style="width: 85px; height: 28px; text-align: right; font-size: 0.82rem; font-weight: 600;">
+        </div>
+        <div id="pos-discount-calc-row" style="display: none; justify-content: space-between; font-size: 0.75rem; color: var(--accent-green-text); padding-left: 4px;">
+          <span id="pos-discount-calc-label">Discount Applied:</span>
+          <span id="pos-discount-calc-val">-{{ business.currency }}0.00</span>
         </div>
         {% if business.tax_enabled %}
           <div style="display: flex; justify-content: space-between;">
@@ -197,18 +230,53 @@
         <span id="pos-grand-total" style="font-size: 1.5rem; font-weight: 800; color: var(--accent-green-text);">{{ business.currency }}0.00</span>
       </div>
 
-      <!-- Payment Methods -->
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-        <button class="payment-method-btn active" data-method="cash">Cash</button>
-        <button class="payment-method-btn" data-method="upi">UPI / QR</button>
-        <button class="payment-method-btn" data-method="card">Card</button>
-        <button class="payment-method-btn" data-method="credit">Pay Later</button>
+      <!-- Payment Methods (5 Modes) -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;">
+        <button type="button" class="payment-method-btn active" data-method="cash">Cash</button>
+        <button type="button" class="payment-method-btn" data-method="upi">UPI / QR</button>
+        <button type="button" class="payment-method-btn" data-method="card">Card</button>
+        <button type="button" class="payment-method-btn" data-method="credit" title="100% Udhar">Pay Later</button>
+        <button type="button" class="payment-method-btn" data-method="partial" title="Partial Cash/UPI/Card + Pay Later">Partial Pay</button>
       </div>
 
       <!-- Cash Tendered & Change calculator (Visible for Cash) -->
       <div id="pos-cash-calc" style="display: flex; gap: 8px; align-items: center;">
         <input type="number" id="pos-tendered-input" class="form-input" style="height: 36px; font-size: 0.82rem;" placeholder="Cash Tendered (₹)">
         <span id="pos-change-display" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Change: ₹0.00</span>
+      </div>
+
+      <!-- Partial Payment Sub-Panel (Visible when Partial Pay selected) -->
+      <div id="pos-partial-calc" style="display: none; flex-direction: column; gap: 8px; padding: 10px; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: var(--radius-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.78rem; font-weight: 700; color: #92400E;">Partial Payment Mode:</span>
+          <div style="display: flex; gap: 4px;">
+            <button type="button" class="partial-sub-btn active" data-submode="cash" style="padding: 2px 8px; font-size: 0.72rem; border-radius: 4px; border: 1px solid #D97706; background: #D97706; color: white; cursor: pointer; font-weight: 600;">Cash</button>
+            <button type="button" class="partial-sub-btn" data-submode="upi" style="padding: 2px 8px; font-size: 0.72rem; border-radius: 4px; border: 1px solid #CBD5E1; background: white; color: #475569; cursor: pointer; font-weight: 600;">UPI</button>
+            <button type="button" class="partial-sub-btn" data-submode="card" style="padding: 2px 8px; font-size: 0.72rem; border-radius: 4px; border: 1px solid #CBD5E1; background: white; color: #475569; cursor: pointer; font-weight: 600;">Card</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center;">
+          <div>
+            <label style="font-size: 0.7rem; font-weight: 600; color: #78350F; display: block; margin-bottom: 2px;">Amount Received Now:</label>
+            <input type="number" id="pos-partial-received" min="0" step="any" class="form-input" style="height: 32px; font-size: 0.85rem; font-weight: 700;" placeholder="₹0.00">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; font-weight: 600; color: #991B1B; display: block; margin-bottom: 2px;">Remaining Udhar Due:</label>
+            <div id="pos-partial-due" style="height: 32px; display: flex; align-items: center; padding: 0 8px; background: #FEE2E2; border: 1px solid #FCA5A5; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 800; color: #B91C1C;">
+              ₹0.00
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 0.68rem; color: #B45309; display: flex; align-items: center; gap: 4px;">
+          <i data-lucide="info" style="width: 12px; height: 12px;"></i>
+          <span>Requires customer name & phone for tracking in Udhar ledger.</span>
+        </div>
+      </div>
+
+      <!-- Pay Later / Credit Alert (Visible when Credit selected) -->
+      <div id="pos-credit-calc" style="display: none; padding: 8px 10px; background: #FEE2E2; border: 1px solid #FCA5A5; border-radius: var(--radius-md); font-size: 0.75rem; color: #991B1B; display: none; align-items: center; gap: 6px;">
+        <i data-lucide="alert-circle" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+        <span><strong>100% Pay Later (Udhar):</strong> Full bill amount will be recorded as outstanding credit. Customer details required.</span>
       </div>
 
       <!-- Checkout Button -->

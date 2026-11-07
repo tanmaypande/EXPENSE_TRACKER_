@@ -1,0 +1,643 @@
+{% extends "base.html" %}
+
+{% block title %}Udhar Management - Customer Credit & Collections | ShopLedger{% endblock %}
+
+{% block extra_head %}
+<style>
+  .kpi-udhar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .udhar-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .udhar-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .udhar-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .udhar-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .udhar-card-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+  }
+  .udhar-card-sub {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+  }
+
+  /* Table styling */
+  .table-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .udhar-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+  }
+  .udhar-table th {
+    background: var(--bg-input);
+    padding: 12px 14px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+  }
+  .udhar-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+    vertical-align: middle;
+  }
+  .udhar-table tbody tr:hover {
+    background: var(--bg-surface-hover);
+  }
+  .overdue-tag {
+    background: #FEE2E2;
+    color: #DC2626;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #FCA5A5;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .cycle-tag {
+    background: #FEF3C7;
+    color: #B45309;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* Modal */
+  .modal-backdrop-custom {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 16px;
+  }
+  .modal-box-custom {
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: modalSlide 0.18s ease-out;
+  }
+  @keyframes modalSlide {
+    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Udhar Management</h1>
+    <p class="page-subtitle">Track customer credit, outstanding balances and payment collections.</p>
+  </div>
+  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <button type="button" id="trigger-reminders-btn" class="btn btn-secondary" title="Scan and generate 5-day cycle reminders">
+      <i data-lucide="bell-ring" style="width: 15px; height: 15px;"></i>
+      <span>Run 5-Day Reminders</span>
+    </button>
+    <a href="{{ url_for('udhar.notifications_view') }}" class="btn btn-secondary" title="View all pending and overdue reminders">
+      <i data-lucide="inbox" style="width: 15px; height: 15px;"></i>
+      <span>Reminders Inbox</span>
+    </a>
+    <a href="{{ url_for('pos.index') }}" class="btn btn-primary">
+      <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+      <span>New Bill (POS)</span>
+    </a>
+  </div>
+</div>
+
+<!-- 4 KPI Summary Cards -->
+<div class="kpi-udhar-grid">
+  <!-- Card 1: Total Outstanding Udhar -->
+  <div class="udhar-card" style="border-left: 3px solid #DC2626;">
+    <div class="udhar-card-header">
+      <span>Total Outstanding Udhar</span>
+      <div class="udhar-card-icon" style="background: rgba(220, 38, 38, 0.1); color: #DC2626;">
+        <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="udhar-card-val" style="color: #DC2626;">
+      {{ business.currency }}{{ "{:,.2f}".format(summary.total_outstanding) }}
+    </div>
+    <div class="udhar-card-sub">
+      Total receivables across all customers
+    </div>
+  </div>
+
+  <!-- Card 2: Customers with Pending Payments -->
+  <div class="udhar-card" style="border-left: 3px solid #D97706;">
+    <div class="udhar-card-header">
+      <span>Pending Customers</span>
+      <div class="udhar-card-icon" style="background: rgba(217, 119, 6, 0.1); color: #D97706;">
+        <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="udhar-card-val" style="color: #D97706;">
+      {{ summary.pending_customers }}
+    </div>
+    <div class="udhar-card-sub">
+      Active customers with unpaid Khata balance
+    </div>
+  </div>
+
+  <!-- Card 3: Amount Collected This Month -->
+  <div class="udhar-card" style="border-left: 3px solid var(--accent-green);">
+    <div class="udhar-card-header">
+      <span>Collected This Month</span>
+      <div class="udhar-card-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green);">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="udhar-card-val" style="color: var(--accent-green);">
+      {{ business.currency }}{{ "{:,.2f}".format(summary.collected_this_month) }}
+    </div>
+    <div class="udhar-card-sub">
+      Payments received against credit this month
+    </div>
+  </div>
+
+  <!-- Card 4: Overdue Payments (> 30 days) -->
+  <div class="udhar-card" style="border-left: 3px solid #7C3AED;">
+    <div class="udhar-card-header">
+      <span>Overdue Payments (>30d)</span>
+      <div class="udhar-card-icon" style="background: rgba(124, 58, 237, 0.1); color: #7C3AED;">
+        <i data-lucide="clock" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div class="udhar-card-val" style="color: #7C3AED;">
+      {{ business.currency }}{{ "{:,.2f}".format(summary.overdue_amount) }}
+    </div>
+    <div class="udhar-card-sub">
+      {{ summary.overdue_count }} bills pending > 30 days
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar: Search & Filtering -->
+<div class="card" style="padding: 14px 18px; margin-bottom: 18px;">
+  <form method="GET" action="{{ url_for('udhar.index') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    <!-- Search Bar -->
+    <div style="flex: 1; min-width: 240px; position: relative;">
+      <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-faint);"></i>
+      <input type="text" name="search" class="form-control" style="padding-left: 34px; height: 38px;" placeholder="Search Customer Name, Phone, or Invoice #..." value="{{ search }}">
+    </div>
+
+    <!-- Status Filter -->
+    <div style="min-width: 170px;">
+      <select name="status" class="form-control" style="height: 38px;" onchange="this.form.submit()">
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Records</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending Due (Udhar > ₹0)</option>
+        <option value="partial" {% if status_filter == 'partial' %}selected{% endif %}>Partially Paid</option>
+        <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>100% Unpaid (Pay Later)</option>
+        <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Overdue (> 30 Days)</option>
+        <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Settled (Fully Paid)</option>
+      </select>
+    </div>
+
+    <!-- Sort Selector -->
+    <div style="min-width: 180px;">
+      <select name="sort" class="form-control" style="height: 38px;" onchange="this.form.submit()">
+        <option value="balance_desc" {% if sort_by == 'balance_desc' %}selected{% endif %}>Highest Udhar First</option>
+        <option value="balance_asc" {% if sort_by == 'balance_asc' %}selected{% endif %}>Lowest Udhar First</option>
+        <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Newest Bills First</option>
+        <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Oldest Bills First</option>
+        <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Customer Name (A-Z)</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-secondary" style="height: 38px;">
+      <i data-lucide="filter" style="width: 14px; height: 14px;"></i> Filter
+    </button>
+
+    {% if search or status_filter != 'all' or sort_by != 'balance_desc' %}
+      <a href="{{ url_for('udhar.index') }}" class="btn btn-secondary" style="height: 38px;">Reset</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Main Invoices / Udhar Table -->
+<div class="table-card">
+  <div style="padding: 14px 18px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+      <i data-lucide="book-open" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
+      <span>Customer Udhar Invoices</span>
+      <span style="font-size: 0.72rem; padding: 2px 7px; border-radius: 999px; background: var(--bg-input); color: var(--text-muted); font-weight: 600;">
+        {{ invoices|length }} records
+      </span>
+    </div>
+  </div>
+
+  {% if invoices and invoices|length > 0 %}
+    <div style="overflow-x: auto;">
+      <table class="udhar-table">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Date & Age</th>
+            <th>Customer</th>
+            <th style="text-align: right;">Total Bill</th>
+            <th style="text-align: right;">Paid So Far</th>
+            <th style="text-align: right;">Remaining Udhar</th>
+            <th style="text-align: center;">Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+            <tr>
+              <td>
+                <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--primary-main); text-decoration: none;">
+                  {{ inv.invoice_number }}
+                </a>
+              </td>
+              <td>
+                <div style="font-size: 0.8rem; color: var(--text-main);">{{ inv.created_at[:10] }}</div>
+                <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                  {% if inv.is_overdue %}
+                    <span class="overdue-tag">
+                      <i data-lucide="alert-triangle" style="width: 11px; height: 11px;"></i>
+                      {{ inv.days_elapsed }}d overdue
+                    </span>
+                  {% elif inv.days_elapsed >= 5 and inv.balance_amount > 0 %}
+                    <span class="cycle-tag">
+                      {{ inv.days_elapsed }}d age
+                    </span>
+                  {% else %}
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">
+                      {{ inv.days_elapsed }}d ago
+                    </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">
+                  {% if inv.customer_id %}
+                    <a href="{{ url_for('udhar.customer_ledger', customer_id=inv.customer_id) }}" style="color: var(--text-main); text-decoration: none;" title="View Customer Khata Ledger">
+                      {{ inv.customer_name }}
+                    </a>
+                  {% else %}
+                    {{ inv.customer_name or 'Walk-in' }}
+                  {% endif %}
+                </div>
+                {% if inv.customer_phone %}
+                  <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                    <i data-lucide="phone" style="width: 11px; height: 11px;"></i> {{ inv.customer_phone }}
+                  </div>
+                {% endif %}
+              </td>
+              <td style="text-align: right; font-weight: 600;">
+                {{ business.currency }}{{ "{:,.2f}".format(inv.grand_total) }}
+              </td>
+              <td style="text-align: right; color: var(--accent-green-text); font-weight: 600;">
+                {{ business.currency }}{{ "{:,.2f}".format(inv.paid_amount) }}
+              </td>
+              <td style="text-align: right;">
+                {% if inv.balance_amount > 0 %}
+                  <span style="font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #DC2626; font-size: 0.95rem;">
+                    {{ business.currency }}{{ "{:,.2f}".format(inv.balance_amount) }}
+                  </span>
+                {% else %}
+                  <span style="color: var(--accent-green-text); font-weight: 700; font-size: 0.82rem;">
+                    Settled (₹0.00)
+                  </span>
+                {% endif %}
+              </td>
+              <td style="text-align: center;">
+                {% if inv.balance_amount == 0 %}
+                  <span class="badge-status badge-paid">Paid</span>
+                {% elif inv.paid_amount > 0 %}
+                  <span class="badge-status badge-partial">Partially Paid</span>
+                {% else %}
+                  <span class="badge-status badge-unpaid">Unpaid</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                  {% if inv.balance_amount > 0 %}
+                    <button type="button" 
+                            class="btn btn-sm btn-primary open-collect-modal-btn" 
+                            style="background: var(--accent-green); padding: 5px 10px; font-size: 0.75rem;"
+                            data-invoice-id="{{ inv.id }}"
+                            data-invoice-no="{{ inv.invoice_number }}"
+                            data-customer-name="{{ inv.customer_name }}"
+                            data-customer-phone="{{ inv.customer_phone or '' }}"
+                            data-grand-total="{{ inv.grand_total }}"
+                            data-paid-amount="{{ inv.paid_amount }}"
+                            data-balance="{{ inv.balance_amount }}">
+                      <i data-lucide="hand-coins" style="width: 13px; height: 13px;"></i> Collect
+                    </button>
+                  {% endif %}
+
+                  {% if inv.customer_id %}
+                    <a href="{{ url_for('udhar.customer_ledger', customer_id=inv.customer_id) }}" class="btn btn-sm btn-secondary" style="padding: 5px 8px;" title="Customer Khata Ledger">
+                      <i data-lucide="book" style="width: 13px; height: 13px;"></i>
+                    </a>
+                  {% endif %}
+
+                  <a href="{{ url_for('invoices.view_invoice', id=inv.id) }}" class="btn btn-sm btn-secondary" style="padding: 5px 8px;" title="View Bill">
+                    <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+      <i data-lucide="check-circle" style="width: 42px; height: 42px; color: var(--accent-green); margin-bottom: 10px; opacity: 0.7;"></i>
+      <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">No Pending Udhar Invoices Found</h3>
+      <p style="font-size: 0.82rem; max-width: 400px; margin: 0 auto;">All customer credit balances have been settled or no matching invoices found.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- =========================================================================
+     COLLECT REMAINING PAYMENT MODAL
+     ========================================================================= -->
+<div class="modal-backdrop-custom" id="collectModalBackdrop">
+  <div class="modal-box-custom">
+    <!-- Modal Header -->
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: var(--accent-green); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="hand-coins" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div>
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); line-height: 1.2;">Collect Udhar Payment</h3>
+          <span id="modal-invoice-no-badge" style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted);">INV-...</span>
+        </div>
+      </div>
+      <button type="button" id="modalCloseX" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;" title="Close">
+        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
+
+    <!-- Modal Form -->
+    <form id="collectPaymentForm" method="POST" action="{{ url_for('udhar.collect_payment') }}" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <input type="hidden" name="invoice_id" id="modal-invoice-id">
+
+      <!-- Customer & Bill Summary Pill -->
+      <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Customer:</span>
+          <span id="modal-cust-name" style="font-weight: 700; color: var(--text-main);">-</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Invoice Total:</span>
+          <span id="modal-total-amt" style="font-weight: 600; color: var(--text-main);">₹0.00</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Already Paid:</span>
+          <span id="modal-paid-amt" style="font-weight: 600; color: var(--accent-green-text);">₹0.00</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 6px; font-size: 0.9rem;">
+          <span style="font-weight: 700; color: #DC2626;">Outstanding Udhar Due:</span>
+          <span id="modal-balance-amt" style="font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #DC2626;">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Payment Amount Input -->
+      <div>
+        <label for="collect-amount-input" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">
+          Amount Collected ({{ business.currency }}) *
+        </label>
+        <div style="position: relative;">
+          <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">{{ business.currency }}</span>
+          <input type="number" 
+                 id="collect-amount-input" 
+                 name="amount" 
+                 step="any" 
+                 min="0.01" 
+                 class="form-control" 
+                 style="padding-left: 28px; height: 42px; font-size: 1.1rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;" 
+                 required>
+        </div>
+        <div id="collect-amount-feedback" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+          Enter the exact amount received from customer.
+        </div>
+      </div>
+
+      <!-- Payment Method -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Payment Method</label>
+          <select name="payment_method" class="form-control" style="height: 38px;">
+            <option value="cash" selected>Cash</option>
+            <option value="upi">UPI / QR Code</option>
+            <option value="card">Card / POS Swipe</option>
+            <option value="bank_transfer">Bank Transfer / NEFT</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Transaction Ref</label>
+          <input type="text" name="transaction_reference" class="form-control" style="height: 38px;" placeholder="e.g. UPI Ref / Txn ID">
+        </div>
+      </div>
+
+      <!-- Collection Notes -->
+      <div>
+        <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Collection Notes</label>
+        <input type="text" name="notes" class="form-control" style="height: 38px;" placeholder="Optional receipt note...">
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+        <button type="button" id="modalCancelBtn" class="btn btn-secondary" style="height: 40px; padding: 0 16px;">
+          Cancel
+        </button>
+        <button type="submit" id="modalSubmitBtn" class="btn btn-primary" style="height: 40px; padding: 0 20px; background: var(--accent-green); font-weight: 700;">
+          <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+          <span>Record Collection</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function() {
+    const modalBackdrop = document.getElementById('collectModalBackdrop');
+    const modalCloseX = document.getElementById('modalCloseX');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    const modalInvoiceId = document.getElementById('modal-invoice-id');
+    const modalInvoiceBadge = document.getElementById('modal-invoice-no-badge');
+    const modalCustName = document.getElementById('modal-cust-name');
+    const modalTotalAmt = document.getElementById('modal-total-amt');
+    const modalPaidAmt = document.getElementById('modal-paid-amt');
+    const modalBalanceAmt = document.getElementById('modal-balance-amt');
+    const collectAmountInput = document.getElementById('collect-amount-input');
+    const collectFeedback = document.getElementById('collect-amount-feedback');
+    const collectForm = document.getElementById('collectPaymentForm');
+    const triggerRemindersBtn = document.getElementById('trigger-reminders-btn');
+
+    let currentBalanceDue = 0.0;
+
+    function openModal(btn) {
+      const invId = btn.getAttribute('data-invoice-id');
+      const invNo = btn.getAttribute('data-invoice-no');
+      const custName = btn.getAttribute('data-customer-name') || 'Customer';
+      const custPhone = btn.getAttribute('data-customer-phone') || '';
+      const total = parseFloat(btn.getAttribute('data-grand-total')) || 0;
+      const paid = parseFloat(btn.getAttribute('data-paid-amount')) || 0;
+      const balance = parseFloat(btn.getAttribute('data-balance')) || 0;
+
+      currentBalanceDue = balance;
+      modalInvoiceId.value = invId;
+      modalInvoiceBadge.textContent = invNo;
+      modalCustName.textContent = custPhone ? `${custName} (${custPhone})` : custName;
+      modalTotalAmt.textContent = `₹${total.toFixed(2)}`;
+      modalPaidAmt.textContent = `₹${paid.toFixed(2)}`;
+      modalBalanceAmt.textContent = `₹${balance.toFixed(2)}`;
+
+      // Prefill with full remaining due
+      collectAmountInput.value = balance.toFixed(2);
+      collectAmountInput.max = balance;
+      collectAmountInput.focus();
+
+      validateAmount();
+      modalBackdrop.style.display = 'flex';
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeModal() {
+      modalBackdrop.style.display = 'none';
+      collectForm.reset();
+    }
+
+    function validateAmount() {
+      const val = parseFloat(collectAmountInput.value) || 0;
+      if (val <= 0) {
+        collectFeedback.textContent = "Amount must be greater than zero.";
+        collectFeedback.style.color = "#DC2626";
+        return false;
+      } else if (val > currentBalanceDue + 0.001) {
+        collectFeedback.textContent = `Amount cannot exceed current balance (₹${currentBalanceDue.toFixed(2)}).`;
+        collectFeedback.style.color = "#DC2626";
+        return false;
+      } else if (Math.abs(val - currentBalanceDue) < 0.01) {
+        collectFeedback.textContent = "Full settlement (₹0.00 will remain due).";
+        collectFeedback.style.color = "var(--accent-green-text)";
+        return true;
+      } else {
+        const remaining = (currentBalanceDue - val).toFixed(2);
+        collectFeedback.textContent = `Partial collection: ₹${remaining} will remain as Udhar.`;
+        collectFeedback.style.color = "#D97706";
+        return true;
+      }
+    }
+
+    document.querySelectorAll('.open-collect-modal-btn').forEach(btn => {
+      btn.addEventListener('click', () => openModal(btn));
+    });
+
+    if (modalCloseX) modalCloseX.addEventListener('click', closeModal);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeModal);
+    if (modalBackdrop) {
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+    }
+
+    if (collectAmountInput) {
+      collectAmountInput.addEventListener('input', validateAmount);
+    }
+
+    if (collectForm) {
+      collectForm.addEventListener('submit', (e) => {
+        if (!validateAmount()) {
+          e.preventDefault();
+          collectAmountInput.focus();
+        }
+      });
+    }
+
+    // Manual 5-day reminder trigger
+    if (triggerRemindersBtn) {
+      triggerRemindersBtn.addEventListener('click', async () => {
+        triggerRemindersBtn.disabled = true;
+        triggerRemindersBtn.innerHTML = `<span>Checking Reminders...</span>`;
+        try {
+          const res = await fetch("{{ url_for('udhar.trigger_reminders') }}", { method: "POST" });
+          const data = await res.json();
+          if (data.success) {
+            alert(`5-Day Reminder Engine check completed!\nNew Reminders Generated: ${data.created_reminders}`);
+            window.location.reload();
+          } else {
+            alert(`Reminder check failed: ${data.error || 'Unknown error'}`);
+          }
+        } catch (err) {
+          alert(`Network error: ${err.message}`);
+        } finally {
+          triggerRemindersBtn.disabled = false;
+          triggerRemindersBtn.innerHTML = `<i data-lucide="bell-ring" style="width: 15px; height: 15px;"></i><span>Run 5-Day Reminders</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
+    }
+
+    // Keyboard ESC to close modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalBackdrop.style.display === 'flex') {
+        closeModal();
+      }
+    });
+  })();
+</script>
+{% endblock %}

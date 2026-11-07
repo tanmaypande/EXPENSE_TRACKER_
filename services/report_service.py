@@ -316,14 +316,21 @@ def get_monthly_trends(business_id, months=6):
     }
 
 def get_receivables_and_payables(business_id):
-    """Fetches total outstanding customer receivables and supplier payables."""
+    """Fetches total outstanding customer receivables, udhar collections, and supplier payables."""
     conn = get_db_connection()
     r_row = conn.execute("""
-    SELECT COALESCE(SUM(outstanding_balance), 0.0) as total_receivable
-    FROM customers
-    WHERE business_id = ? AND outstanding_balance > 0
+    SELECT COALESCE(SUM(balance_amount), 0.0) as total_receivable
+    FROM sales
+    WHERE business_id = ? AND balance_amount > 0
     """, (business_id,)).fetchone()
     total_receivable = float(r_row["total_receivable"]) if r_row else 0.0
+
+    c_row = conn.execute("""
+    SELECT COALESCE(SUM(amount), 0.0) as total_collected
+    FROM customer_payments
+    WHERE business_id = ?
+    """, (business_id,)).fetchone()
+    total_collected = float(c_row["total_collected"]) if c_row else 0.0
 
     p_row = conn.execute("""
     SELECT COALESCE(SUM(outstanding_balance), 0.0) as total_payable
@@ -335,5 +342,6 @@ def get_receivables_and_payables(business_id):
     conn.close()
     return {
         "total_receivable": round(total_receivable, 2),
+        "total_collected": round(total_collected, 2),
         "total_payable": round(total_payable, 2)
     }

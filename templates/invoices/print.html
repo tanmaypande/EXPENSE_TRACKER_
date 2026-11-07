@@ -177,7 +177,7 @@
         <div style="text-align: right;">
           <p style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b;">Payment Details</p>
           <p style="font-weight: 700; text-transform: uppercase;">Method: {{ sale.payment_method }}</p>
-          <p>Status: {{ sale.payment_status|capitalize }}</p>
+          <p>Status: <strong>{{ 'Partially Paid' if sale.payment_status == 'partial' else sale.payment_status|capitalize }}</strong></p>
         </div>
       </div>
 
@@ -225,7 +225,7 @@
           </div>
           {% if sale.discount_amount > 0 %}
             <div style="display: flex; justify-content: space-between; color: #059669;">
-              <span>Discount:</span>
+              <span>Discount{% if sale.discount_type == 'percentage' %} ({{ "{:g}".format(sale.discount_value) }}%){% endif %}:</span>
               <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
             </div>
           {% endif %}
@@ -311,7 +311,7 @@
       </div>
       {% if sale.discount_amount > 0 %}
         <div style="display: flex; justify-content: space-between;">
-          <span>Discount:</span>
+          <span>Discount{% if sale.discount_type == 'percentage' %} ({{ "{:g}".format(sale.discount_value) }}%){% endif %}:</span>
           <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
         </div>
       {% endif %}

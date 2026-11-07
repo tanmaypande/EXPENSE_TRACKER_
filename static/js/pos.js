@@ -6,6 +6,8 @@
 (function () {
   let cart = [];
   let selectedPaymentMethod = "cash";
+  let partialSubMode = "cash";
+  let discountType = "fixed"; // 'fixed' or 'percentage'
   let activeCategoryId = "";
 
   const searchInput = document.getElementById("pos-search-input");
@@ -14,6 +16,11 @@
   const cartEmptyMsg = document.getElementById("pos-cart-empty");
   const subtotalElem = document.getElementById("pos-subtotal");
   const discountInput = document.getElementById("pos-discount-input");
+  const discTypeFixedBtn = document.getElementById("pos-disc-type-fixed");
+  const discTypePctBtn = document.getElementById("pos-disc-type-pct");
+  const discCalcRow = document.getElementById("pos-discount-calc-row");
+  const discCalcLabel = document.getElementById("pos-discount-calc-label");
+  const discCalcVal = document.getElementById("pos-discount-calc-val");
   const taxValElem = document.getElementById("pos-tax-val");
   const grandTotalElem = document.getElementById("pos-grand-total");
   const submitBtn = document.getElementById("pos-submit-btn");
@@ -21,6 +28,10 @@
   const tenderedInput = document.getElementById("pos-tendered-input");
   const changeDisplay = document.getElementById("pos-change-display");
   const cashCalcBox = document.getElementById("pos-cash-calc");
+  const partialCalcBox = document.getElementById("pos-partial-calc");
+  const creditCalcBox = document.getElementById("pos-credit-calc");
+  const partialReceivedInput = document.getElementById("pos-partial-received");
+  const partialDueDisplay = document.getElementById("pos-partial-due");
   const custNameInput = document.getElementById("pos-cust-name");
   const custPhoneInput = document.getElementById("pos-cust-phone");
 
@@ -33,6 +44,7 @@
     bindProductTiles();
     bindSearch();
     bindCategoryFilters();
+    bindDiscountToggle();
     bindPaymentMethods();
     bindCartActions();
     bindShortcuts();
@@ -284,31 +296,107 @@
       tenderedInput.addEventListener("input", updateCashChange);
     }
 
+    if (partialReceivedInput) {
+      partialReceivedInput.addEventListener("input", updatePartialDue);
+    }
+
     if (submitBtn) {
       submitBtn.addEventListener("click", executeCheckout);
     }
   }
 
+  // 4B. DISCOUNT TOGGLE (FIXED ₹ vs PERCENTAGE %)
+  function bindDiscountToggle() {
+    if (discTypeFixedBtn && discTypePctBtn) {
+      discTypeFixedBtn.addEventListener("click", () => {
+        if (discountType === "fixed") return;
+        discountType = "fixed";
+        discTypeFixedBtn.classList.add("active");
+        discTypePctBtn.classList.remove("active");
+        if (discountInput) {
+          discountInput.placeholder = "0";
+          discountInput.removeAttribute("max");
+        }
+        updateTotals();
+      });
+
+      discTypePctBtn.addEventListener("click", () => {
+        if (discountType === "percentage") return;
+        discountType = "percentage";
+        discTypePctBtn.classList.add("active");
+        discTypeFixedBtn.classList.remove("active");
+        if (discountInput) {
+          discountInput.placeholder = "0%";
+          discountInput.setAttribute("max", "100");
+          // If value > 100, clamp
+          if (parseFloat(discountInput.value) > 100) {
+            discountInput.value = "100";
+          }
+        }
+        updateTotals();
+      });
+    }
+  }
+
   function updateTotals() {
     let subtotal = 0;
-    let taxTotal = 0;
+    let rawTaxTotal = 0;
 
     cart.forEach((itm) => {
       const line = itm.unit_price * itm.quantity;
       subtotal += line;
       if (taxEnabled && itm.tax_rate > 0) {
-        taxTotal += line * (itm.tax_rate / 100);
+        rawTaxTotal += line * (itm.tax_rate / 100);
       }
     });
 
-    const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
-    const grandTotal = Math.max(0, subtotal - discount + taxTotal);
+    const discValRaw = parseFloat(discountInput ? discountInput.value : 0) || 0;
+    let computedDiscount = 0;
+
+    if (discountType === "percentage") {
+      const pct = Math.max(0, Math.min(100, discValRaw));
+      computedDiscount = subtotal * (pct / 100);
+      if (discCalcRow && discCalcLabel && discCalcVal) {
+        if (pct > 0) {
+          discCalcRow.style.display = "flex";
+          discCalcLabel.textContent = `Discount (${pct}%):`;
+          discCalcVal.textContent = `-${currency}${computedDiscount.toFixed(2)}`;
+        } else {
+          discCalcRow.style.display = "none";
+        }
+      }
+    } else {
+      // Fixed discount
+      computedDiscount = Math.max(0, Math.min(subtotal, discValRaw));
+      if (discCalcRow && discCalcLabel && discCalcVal) {
+        if (computedDiscount > 0) {
+          discCalcRow.style.display = "flex";
+          discCalcLabel.textContent = `Discount:`;
+          discCalcVal.textContent = `-${currency}${computedDiscount.toFixed(2)}`;
+        } else {
+          discCalcRow.style.display = "none";
+        }
+      }
+    }
+
+    const taxableAmount = Math.max(0, subtotal - computedDiscount);
+    let finalTax = 0;
+    if (taxEnabled) {
+      if (subtotal > 0 && computedDiscount > 0) {
+        finalTax = rawTaxTotal * (taxableAmount / subtotal);
+      } else {
+        finalTax = rawTaxTotal;
+      }
+    }
+
+    const grandTotal = Math.max(0, taxableAmount + finalTax);
 
     if (subtotalElem) subtotalElem.textContent = `${currency}${subtotal.toFixed(2)}`;
-    if (taxValElem) taxValElem.textContent = `${currency}${taxTotal.toFixed(2)}`;
+    if (taxValElem) taxValElem.textContent = `${currency}${finalTax.toFixed(2)}`;
     if (grandTotalElem) grandTotalElem.textContent = `${currency}${grandTotal.toFixed(2)}`;
 
     updateCashChange();
+    updatePartialDue();
   }
 
   function updateCashChange() {
@@ -327,7 +415,24 @@
     }
   }
 
-  // 5. PAYMENT METHODS
+  function updatePartialDue() {
+    if (!partialReceivedInput || !partialDueDisplay) return;
+    const grandTotalStr = grandTotalElem ? grandTotalElem.textContent.replace(currency, "") : "0";
+    const grandTotal = parseFloat(grandTotalStr) || 0;
+    const received = parseFloat(partialReceivedInput.value) || 0;
+    const remaining = Math.max(0, grandTotal - received);
+
+    partialDueDisplay.textContent = `${currency}${remaining.toFixed(2)}`;
+    if (remaining > 0) {
+      partialDueDisplay.style.color = "#B91C1C";
+      partialDueDisplay.style.background = "#FEE2E2";
+    } else {
+      partialDueDisplay.style.color = "var(--accent-green-text)";
+      partialDueDisplay.style.background = "var(--accent-green-bg)";
+    }
+  }
+
+  // 5. PAYMENT METHODS (Cash, UPI, Card, Pay Later, Partial Pay)
   function bindPaymentMethods() {
     document.querySelectorAll(".payment-method-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -335,9 +440,36 @@
         btn.classList.add("active");
         selectedPaymentMethod = btn.getAttribute("data-method");
 
+        // Toggle sub-panels
         if (cashCalcBox) {
           cashCalcBox.style.display = selectedPaymentMethod === "cash" ? "flex" : "none";
         }
+        if (partialCalcBox) {
+          partialCalcBox.style.display = selectedPaymentMethod === "partial" ? "flex" : "none";
+        }
+        if (creditCalcBox) {
+          creditCalcBox.style.display = selectedPaymentMethod === "credit" ? "flex" : "none";
+        }
+
+        updateCashChange();
+        updatePartialDue();
+      });
+    });
+
+    // Partial payment sub-mode buttons (Cash, UPI, Card)
+    document.querySelectorAll(".partial-sub-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".partial-sub-btn").forEach((b) => {
+          b.classList.remove("active");
+          b.style.background = "white";
+          b.style.borderColor = "#CBD5E1";
+          b.style.color = "#475569";
+        });
+        btn.classList.add("active");
+        btn.style.background = "#D97706";
+        btn.style.borderColor = "#D97706";
+        btn.style.color = "white";
+        partialSubMode = btn.getAttribute("data-submode") || "cash";
       });
     });
   }
@@ -349,26 +481,70 @@
       return;
     }
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `<span>Processing Bill...</span>`;
-
     const grandTotalStr = grandTotalElem ? grandTotalElem.textContent.replace(currency, "") : "0";
     const grandTotal = parseFloat(grandTotalStr) || 0;
-    const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
+    const discValRaw = parseFloat(discountInput ? discountInput.value : 0) || 0;
 
+    let subtotal = 0;
+    cart.forEach((itm) => { subtotal += itm.unit_price * itm.quantity; });
+
+    let computedDiscountAmount = 0;
+    if (discountType === "percentage") {
+      const pct = Math.max(0, Math.min(100, discValRaw));
+      computedDiscountAmount = parseFloat((subtotal * (pct / 100)).toFixed(2));
+    } else {
+      computedDiscountAmount = parseFloat(Math.max(0, Math.min(subtotal, discValRaw)).toFixed(2));
+    }
+
+    // Determine actual paid amount and payment method
     let paidAmount = grandTotal;
+    let paymentMethodToSend = selectedPaymentMethod;
+
     if (selectedPaymentMethod === "credit") {
       paidAmount = 0.0;
+    } else if (selectedPaymentMethod === "partial") {
+      const rec = parseFloat(partialReceivedInput ? partialReceivedInput.value : 0) || 0;
+      if (rec < 0) {
+        alert("Received amount cannot be negative.");
+        if (partialReceivedInput) partialReceivedInput.focus();
+        return;
+      }
+      if (rec > grandTotal) {
+        alert(`Received amount (₹${rec.toFixed(2)}) cannot exceed Grand Total (₹${grandTotal.toFixed(2)}).`);
+        if (partialReceivedInput) partialReceivedInput.focus();
+        return;
+      }
+      paidAmount = rec;
+      paymentMethodToSend = `partial_${partialSubMode}`;
     } else if (selectedPaymentMethod === "cash" && tenderedInput && parseFloat(tenderedInput.value) > 0) {
       paidAmount = Math.min(grandTotal, parseFloat(tenderedInput.value));
     }
 
+    const remainingUdhar = Math.max(0, parseFloat((grandTotal - paidAmount).toFixed(2)));
+
+    // Mandatory Customer validation if Udhar (credit/partial balance > 0) is created
+    const custName = custNameInput ? custNameInput.value.trim() : "";
+    const custPhone = custPhoneInput ? custPhoneInput.value.trim() : "";
+
+    if (remainingUdhar > 0) {
+      if (!custName && !custPhone) {
+        alert(`Customer Name or Phone is required to record outstanding Udhar (₹${remainingUdhar.toFixed(2)}). Please enter customer details at the top of the cart.`);
+        if (custNameInput) custNameInput.focus();
+        return;
+      }
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>Processing Bill...</span>`;
+
     const payload = {
       items: cart,
-      customer_name: custNameInput ? custNameInput.value.trim() : "",
-      customer_phone: custPhoneInput ? custPhoneInput.value.trim() : "",
-      discount_amount: discount,
-      payment_method: selectedPaymentMethod,
+      customer_name: custName,
+      customer_phone: custPhone,
+      discount_type: discountType,
+      discount_value: discValRaw,
+      discount_amount: computedDiscountAmount,
+      payment_method: paymentMethodToSend,
       paid_amount: paidAmount,
     };
 
@@ -381,16 +557,23 @@
 
       const data = await res.json();
       if (data.success) {
-        // Open print view in new window or redirect
+        // Open print view in new window or tab
         window.open(data.print_url, "_blank");
         // Clear cart and reset inputs
         cart = [];
         renderCart();
         if (discountInput) discountInput.value = "0";
         if (tenderedInput) tenderedInput.value = "";
+        if (partialReceivedInput) partialReceivedInput.value = "";
         if (custNameInput) custNameInput.value = "";
         if (custPhoneInput) custPhoneInput.value = "";
-        alert(`Bill generated successfully!\nInvoice Number: ${data.invoice_number}`);
+        if (discCalcRow) discCalcRow.style.display = "none";
+        
+        let msg = `Bill generated successfully!\nInvoice Number: ${data.invoice_number}`;
+        if (remainingUdhar > 0) {
+          msg += `\nOutstanding Udhar Recorded: ₹${remainingUdhar.toFixed(2)}`;
+        }
+        alert(msg);
         if (searchInput) searchInput.focus();
       } else {
         alert(`Checkout failed: ${data.error || "Unknown error"}`);

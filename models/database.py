@@ -268,22 +268,61 @@ def init_db():
     )
     """)
 
-    # 15. CUSTOMER PAYMENTS TABLE (Credit Settlement)
+    # 15. CUSTOMER PAYMENTS TABLE (Credit Settlement & Installments)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS customer_payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         business_id INTEGER NOT NULL,
         customer_id INTEGER NOT NULL,
+        invoice_id INTEGER,
         amount REAL NOT NULL,
         payment_method TEXT DEFAULT 'cash',
+        transaction_reference TEXT,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
-        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (invoice_id) REFERENCES sales(id) ON DELETE SET NULL
     )
     """)
 
-    # 16. LEGACY RECORD TABLE PRESERVATION
+    # 16. IN-APP NOTIFICATIONS & UDHAR REMINDERS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        customer_id INTEGER,
+        invoice_id INTEGER,
+        notification_type TEXT DEFAULT 'udhar_reminder',
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        amount REAL DEFAULT 0.0,
+        reminder_date TEXT,
+        status TEXT DEFAULT 'unread',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (invoice_id) REFERENCES sales(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 17. REMINDER HISTORY TABLE (5-Day cycle deduplication)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS reminder_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        invoice_id INTEGER NOT NULL,
+        reminder_cycle INTEGER NOT NULL,
+        reminder_date TEXT NOT NULL,
+        notification_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(business_id, invoice_id, reminder_cycle),
+        FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+        FOREIGN KEY (invoice_id) REFERENCES sales(id) ON DELETE CASCADE
+    )
+    """)
+
+    # 18. LEGACY RECORD TABLE PRESERVATION
     cur.execute("""
     CREATE TABLE IF NOT EXISTS record (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -297,6 +336,26 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id)
     )
     """)
+
+    # Ensure backward-compatible columns exist on sales
+    cur.execute("PRAGMA table_info(sales)")
+    sales_cols = [r["name"] for r in cur.fetchall()]
+    if "discount_type" not in sales_cols:
+        try: cur.execute("ALTER TABLE sales ADD COLUMN discount_type TEXT DEFAULT 'fixed'")
+        except Exception: pass
+    if "discount_value" not in sales_cols:
+        try: cur.execute("ALTER TABLE sales ADD COLUMN discount_value REAL DEFAULT 0.0")
+        except Exception: pass
+
+    # Ensure backward-compatible columns exist on customer_payments
+    cur.execute("PRAGMA table_info(customer_payments)")
+    cp_cols = [r["name"] for r in cur.fetchall()]
+    if "invoice_id" not in cp_cols:
+        try: cur.execute("ALTER TABLE customer_payments ADD COLUMN invoice_id INTEGER")
+        except Exception: pass
+    if "transaction_reference" not in cp_cols:
+        try: cur.execute("ALTER TABLE customer_payments ADD COLUMN transaction_reference TEXT")
+        except Exception: pass
 
     # Ensure backward-compatible columns exist on users and record
     cur.execute("PRAGMA table_info(users)")

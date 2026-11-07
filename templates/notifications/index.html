@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Udhar Reminders & Notifications - ShopLedger{% endblock %}
+
+{% block extra_head %}
+<style>
+  .notif-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.15s ease;
+  }
+  .notif-card:hover {
+    border-color: var(--accent-green);
+    box-shadow: var(--shadow-md);
+  }
+  .notif-card.unread {
+    background: #F8FAFC;
+    border-left: 4px solid var(--primary-main);
+  }
+  .notif-card.overdue {
+    border-left: 4px solid #DC2626;
+  }
+  .notif-badge-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .badge-reminder {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FCD34D;
+  }
+  .badge-overdue {
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #FCA5A5;
+  }
+  .tab-pill {
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .tab-pill.active {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #FFFFFF;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div>
+    <h1 class="page-title">Notification Center</h1>
+    <p class="page-subtitle">Automatic 5-day cycle payment reminders and overdue customer credit alerts.</p>
+  </div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <button type="button" id="refresh-notifs-btn" class="btn btn-secondary">
+      <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+      <span>Refresh & Scan</span>
+    </button>
+    <a href="{{ url_for('udhar.index') }}" class="btn btn-primary">
+      <i data-lucide="book-open-check" style="width: 15px; height: 15px;"></i>
+      <span>Udhar Dashboard</span>
+    </a>
+  </div>
+</div>
+
+<!-- Tabs Bar -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap;">
+  <a href="{{ url_for('udhar.notifications_view', filter='all') }}" class="tab-pill {% if status_filter == 'all' %}active{% endif %}">
+    All Notifications
+  </a>
+  <a href="{{ url_for('udhar.notifications_view', filter='unread') }}" class="tab-pill {% if status_filter == 'unread' %}active{% endif %}">
+    Unread {% if unread_count > 0 %}({{ unread_count }}){% endif %}
+  </a>
+  <a href="{{ url_for('udhar.notifications_view', filter='pending') }}" class="tab-pill {% if status_filter == 'pending' %}active{% endif %}">
+    5-Day Reminders
+  </a>
+  <a href="{{ url_for('udhar.notifications_view', filter='overdue') }}" class="tab-pill {% if status_filter == 'overdue' %}active{% endif %}">
+    Overdue (> 30d)
+  </a>
+  <a href="{{ url_for('udhar.notifications_view', filter='read') }}" class="tab-pill {% if status_filter == 'read' %}active{% endif %}">
+    Read Archive
+  </a>
+</div>
+
+<!-- Notifications List -->
+<div id="notifications-container">
+  {% if notifications and notifications|length > 0 %}
+    {% for n in notifications %}
+      <div class="notif-card {{ 'unread' if n.status == 'unread' else '' }} {{ 'overdue' if n.notification_type == 'overdue' else '' }}" id="notif-row-{{ n.id }}">
+        <div style="display: flex; gap: 14px; align-items: flex-start; flex: 1;">
+          <!-- Icon -->
+          <div style="width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: {{ 'rgba(220, 38, 38, 0.1)' if n.notification_type == 'overdue' else 'rgba(217, 119, 6, 0.1)' }}; color: {{ '#DC2626' if n.notification_type == 'overdue' else '#D97706' }};">
+            <i data-lucide="{{ 'alert-triangle' if n.notification_type == 'overdue' else 'bell-ring' }}" style="width: 20px; height: 20px;"></i>
+          </div>
+
+          <!-- Body -->
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="notif-badge-pill {{ 'badge-overdue' if n.notification_type == 'overdue' else 'badge-reminder' }}">
+                {{ 'OVERDUE' if n.notification_type == 'overdue' else '5-DAY REMINDER' }}
+              </span>
+              <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">{{ n.title }}</h3>
+              <span style="font-size: 0.72rem; color: var(--text-muted); margin-left: auto;">{{ n.created_at }}</span>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-main); margin: 6px 0 8px 0; line-height: 1.4;">
+              {{ n.message }}
+            </p>
+
+            <div style="display: flex; gap: 14px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; align-items: center;">
+              {% if n.invoice_number %}
+                <span>Invoice: <strong style="font-family: 'JetBrains Mono', monospace; color: var(--text-main);">{{ n.invoice_number }}</strong></span>
+              {% endif %}
+              {% if n.amount %}
+                <span>Pending Due: <strong style="color: #DC2626; font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(n.amount) }}</strong></span>
+              {% endif %}
+              {% if n.cust_phone %}
+                <span>Customer Phone: <strong style="color: var(--text-main);">{{ n.cust_phone }}</strong></span>
+              {% endif %}
+              <span>Status: <strong style="text-transform: capitalize; color: {{ 'var(--accent-green-text)' if n.status == 'read' else ('#D97706' if n.status == 'snoozed' else 'var(--text-main)') }}">{{ n.status }}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0;">
+          <div style="display: flex; gap: 6px;">
+            {% if n.invoice_id %}
+              <a href="{{ url_for('invoices.view_invoice', id=n.invoice_id) }}" class="btn btn-secondary btn-sm" title="View Invoice">
+                <i data-lucide="receipt" style="width: 13px; height: 13px;"></i>
+                <span>Invoice</span>
+              </a>
+            {% endif %}
+            {% if n.customer_id %}
+              <a href="{{ url_for('udhar.customer_ledger', customer_id=n.customer_id) }}" class="btn btn-secondary btn-sm" title="Customer Ledger">
+                <i data-lucide="book" style="width: 13px; height: 13px;"></i>
+                <span>Ledger</span>
+              </a>
+            {% endif %}
+          </div>
+
+          <div style="display: flex; gap: 6px;">
+            {% if n.status != 'read' %}
+              <button type="button" class="btn btn-secondary btn-sm snooze-btn" data-id="{{ n.id }}" title="Snooze reminder for 5 days">
+                <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                <span>Snooze</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm mark-read-btn" data-id="{{ n.id }}" style="background: var(--accent-green); padding: 4px 10px;" title="Mark as Read">
+                <i data-lucide="check" style="width: 13px; height: 13px;"></i>
+                <span>Mark Read</span>
+              </button>
+            {% else %}
+              <span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px 8px;">Archived</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div style="text-align: center; padding: 50px 20px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+      <i data-lucide="bell-off" style="width: 44px; height: 44px; color: var(--text-muted); opacity: 0.4; margin-bottom: 12px;"></i>
+      <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">No Notifications Found</h3>
+      <p style="font-size: 0.82rem; color: var(--text-muted); max-width: 400px; margin: 0 auto;">No pending payment reminders or credit alerts matching this filter.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function() {
+    // Mark as read AJAX
+    document.querySelectorAll('.mark-read-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const notifId = btn.getAttribute('data-id');
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/notifications/${notifId}/read`, { method: "POST" });
+          const data = await res.json();
+          if (data.success) {
+            const card = document.getElementById(`notif-row-${notifId}`);
+            if (card) {
+              card.classList.remove('unread');
+              btn.parentElement.innerHTML = `<span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px 8px;">Archived</span>`;
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+
+    // Snooze AJAX
+    document.querySelectorAll('.snooze-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const notifId = btn.getAttribute('data-id');
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/notifications/${notifId}/snooze`, { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ days: 5 })
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("Reminder snoozed for 5 days.");
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+
+    // Refresh & scan reminders
+    const refreshBtn = document.getElementById('refresh-notifs-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true;
+        try {
+          const res = await fetch("{{ url_for('udhar.trigger_reminders') }}", { method: "POST" });
+          const data = await res.json();
+          if (data.success) {
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error(err);
+          window.location.reload();
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

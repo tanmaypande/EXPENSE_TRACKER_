@@ -90,6 +90,10 @@
           <i data-lucide="receipt" class="nav-icon"></i>
           <span class="nav-label">Invoices</span>
         </a>
+        <a href="{{ url_for('udhar.index') }}" class="nav-link {% if 'udhar' in request.endpoint %}active{% endif %}">
+          <i data-lucide="book-open-check" class="nav-icon"></i>
+          <span class="nav-label">Udhar (Khata)</span>
+        </a>
         <a href="{{ url_for('returns.index') }}" class="nav-link {% if 'return' in request.endpoint %}active{% endif %}">
           <i data-lucide="rotate-ccw" class="nav-icon"></i>
           <span class="nav-label">Sales Returns</span>
@@ -169,6 +173,16 @@
         </div>
 
         <div class="topbar-right">
+          <!-- Notification Center Bell -->
+          <a href="{{ url_for('udhar.notifications_view') }}" class="action-icon-btn" title="Udhar Reminders & Notifications" style="position: relative; text-decoration: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-main);">
+            <i data-lucide="bell" style="width: 17px; height: 17px;"></i>
+            {% if unread_notifications_count and unread_notifications_count > 0 %}
+              <span style="position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; border-radius: 999px; background: #EF4444; color: #FFFFFF; font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--bg-surface);">
+                {{ unread_notifications_count if unread_notifications_count <= 99 else '99+' }}
+              </span>
+            {% endif %}
+          </a>
+
           <!-- Fast New Bill CTA -->
           <a href="{{ url_for('pos.index') }}" class="btn-primary" style="text-decoration: none;">
             <i data-lucide="plus" style="width: 16px; height: 16px;"></i>

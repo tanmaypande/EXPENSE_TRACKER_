@@ -62,7 +62,7 @@
         <div>
           Status: 
           <span class="badge-status {{ 'badge-paid' if sale.payment_status == 'paid' else ('badge-partial' if sale.payment_status == 'partial' else 'badge-unpaid') }}">
-            {{ sale.payment_status|capitalize }}
+            {{ 'Partially Paid' if sale.payment_status == 'partial' else sale.payment_status|capitalize }}
           </span>
         </div>
       </div>
@@ -118,7 +118,7 @@
         </div>
         {% if sale.discount_amount > 0 %}
           <div style="display: flex; justify-content: space-between; color: var(--accent-green-text);">
-            <span>Discount:</span>
+            <span>Discount{% if sale.discount_type == 'percentage' %} ({{ "{:g}".format(sale.discount_value) }}%){% endif %}:</span>
             <span>-{{ sale.currency }}{{ "{:,.2f}".format(sale.discount_amount) }}</span>
           </div>
         {% endif %}

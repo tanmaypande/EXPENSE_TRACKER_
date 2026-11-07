@@ -85,9 +85,11 @@ def checkout():
         customer_id = cust["id"]
         customer_name = cust["name"]
 
+    discount_type = str(data.get("discount_type", "fixed")).lower()
+    discount_value = float(data.get("discount_value", 0.0) or 0.0)
     discount_amount = float(data.get("discount_amount", 0.0) or 0.0)
     payment_method = data.get("payment_method", "cash").lower()
-    paid_amount = float(data.get("paid_amount", 0.0)) if data.get("paid_amount") is not None else None
+    paid_amount = float(data.get("paid_amount")) if data.get("paid_amount") is not None else None
     notes = data.get("notes", "")
 
     try:
@@ -98,6 +100,8 @@ def checkout():
             customer_id=customer_id,
             customer_name=customer_name,
             customer_phone=customer_phone,
+            discount_type=discount_type,
+            discount_value=discount_value,
             discount_amount=discount_amount,
             payment_method=payment_method,
             paid_amount=paid_amount,
