@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin Sign In | ShopLedger SaaS Platform</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --sa-bg: #0B0F19;
+      --sa-card-bg: #111827;
+      --sa-border: #1F2937;
+      --sa-input-bg: #1A2234;
+      --sa-text: #F9FAFB;
+      --sa-text-muted: #9CA3AF;
+      --sa-primary: #38BDF8;
+      --sa-primary-hover: #0EA5E9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--sa-bg);
+      color: var(--sa-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background glow */
+    .glow-circle {
+      position: absolute;
+      width: 450px;
+      height: 450px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(37, 99, 235, 0.03) 70%, transparent 100%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .brand-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .brand-shield {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 25px rgba(2, 132, 199, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      margin-bottom: 6px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.85rem;
+      color: var(--sa-text-muted);
+    }
+
+    .badge-super {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #38BDF8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 10px;
+    }
+
+    .login-card {
+      background: var(--sa-card-bg);
+      border: 1px solid var(--sa-border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .error-alert {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-alert {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #7DD3FC;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #D1D5DB;
+      margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      color: #6B7280;
+      pointer-events: none;
+    }
+
+    .form-input {
+      width: 100%;
+      background: var(--sa-input-bg);
+      border: 1px solid var(--sa-border);
+      border-radius: 10px;
+      padding: 11px 14px 11px 42px;
+      color: #FFFFFF;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--sa-primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+
+    .toggle-pass-btn {
+      position: absolute;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: #6B7280;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .toggle-pass-btn:hover {
+      color: #9CA3AF;
+    }
+
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .security-notice {
+      margin-top: 24px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(31, 41, 55, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+      font-size: 0.72rem;
+      color: #6B7280;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .portal-switch {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.82rem;
+      color: var(--sa-text-muted);
+    }
+
+    .portal-switch a {
+      color: #38BDF8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .portal-switch a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-circle"></div>
+
+  <div class="login-container">
+    <div class="brand-header">
+      <div class="brand-shield">
+        <i data-lucide="shield-check" style="width: 30px; height: 30px; color: #FFFFFF;"></i>
+      </div>
+      <h1 class="brand-title">Platform Super Admin</h1>
+      <p class="brand-subtitle">ShopLedger Enterprise Management Infrastructure</p>
+      <div class="badge-super">
+        <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
+        <span>Root Access Required</span>
+      </div>
+    </div>
+
+    <div class="login-card">
+      {% if error %}
+        <div class="error-alert">
+          <i data-lucide="alert-octagon" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('super_admin.login') }}" autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="email">Administrator Email</label>
+          <div class="input-wrapper">
+            <i data-lucide="mail" class="input-icon" style="width: 18px; height: 18px;"></i>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-input" 
+              placeholder="Enter administrator email" 
+              required 
+              autofocus
+              autocomplete="off"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Master Security Key</label>
+          <div class="input-wrapper">
+            <i data-lucide="key-round" class="input-icon" style="width: 18px; height: 18px;"></i>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-input" 
+              placeholder="••••••••••••" 
+              required
+            >
+            <button type="button" class="toggle-pass-btn" onclick="togglePasswordVisibility()" aria-label="Toggle password view">
+              <i data-lucide="eye" id="eye-icon" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <i data-lucide="log-in" style="width: 18px; height: 18px;"></i>
+          <span>Authenticate & Access Console</span>
+        </button>
+
+        <div class="security-notice">
+          <i data-lucide="shield-alert" style="width: 14px; height: 14px; color: #F59E0B;"></i>
+          <span>Authorized administrators only. Operations are cryptographically logged.</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="portal-switch">
+      <span>Looking for shop billing and POS?</span>
+      <a href="{{ url_for('auth.login') }}">Shop Owner Sign In &rarr;</a>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    });
+
+    function togglePasswordVisibility() {
+      const passInput = document.getElementById("password");
+      const eyeIcon = document.getElementById("eye-icon");
+      if (passInput.type === "password") {
+        passInput.type = "text";
+        eyeIcon.setAttribute("data-lucide", "eye-off");
+      } else {
+        passInput.type = "password";
+        eyeIcon.setAttribute("data-lucide", "eye");
+      }
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

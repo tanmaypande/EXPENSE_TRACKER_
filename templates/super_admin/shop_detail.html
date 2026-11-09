@@ -1,0 +1,169 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Shop Details: {{ shop.shop_name }} | Super Admin{% endblock %}
+
+{% block page_title %}
+  <i data-lucide="store" style="width: 22px; height: 22px; color: #2563EB;"></i>
+  <span>Shop Details: {{ shop.shop_name }}</span>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="{{ url_for('super_admin.list_shops') }}" class="sa-btn sa-btn-secondary">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        <span>Back to Shops</span>
+      </a>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #0F172A; margin: 0;">{{ shop.shop_name }}</h2>
+    </div>
+
+    <div>
+      {% if shop.access_status == 'active' %}
+        <span class="sa-badge sa-badge-active" style="font-size: 0.85rem; padding: 4px 12px;">
+          <i data-lucide="check" style="width: 13px; height: 13px;"></i> Active
+        </span>
+      {% else %}
+        <span class="sa-badge sa-badge-disabled" style="font-size: 0.85rem; padding: 4px 12px;">
+          <i data-lucide="slash" style="width: 13px; height: 13px;"></i> Disabled
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="sa-card">
+    <div class="sa-card-header">
+      <div class="sa-card-title">
+        <i data-lucide="info" style="width: 18px; height: 18px; color: #2563EB;"></i>
+        <span>Shop & Owner Profile</span>
+      </div>
+    </div>
+    <div class="sa-card-body" style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Shop ID:</span>
+        <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">#{{ shop.id }}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Shop Name:</span>
+        <span style="font-weight: 700; color: #0F172A;">{{ shop.shop_name }}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Shop Owner Name:</span>
+        <span style="font-weight: 600; color: #1E293B;">{{ shop.owner_name or 'N/A' }}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Email Address:</span>
+        <span style="font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #2563EB;">{{ shop.owner_email }}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Account Creation Date:</span>
+        <span style="font-size: 0.85rem; color: #475569;">{{ shop.created_at or '-' }}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9; padding-bottom: 10px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Access Status:</span>
+        <span style="font-weight: 700; text-transform: uppercase; color: {{ '#10B981' if shop.access_status == 'active' else '#EF4444' }};">
+          {{ shop.access_status }}
+        </span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; padding-top: 4px;">
+        <span style="font-size: 0.85rem; color: #64748B;">Password Status:</span>
+        <span style="font-size: 0.82rem; color: {{ '#D97706' if shop.must_change_password else '#10B981' }}; font-weight: 600;">
+          {{ 'Pending change on next login' if shop.must_change_password else 'Personal password active' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Administrative Actions Card -->
+  <div class="sa-card">
+    <div class="sa-card-header">
+      <div class="sa-card-title">
+        <i data-lucide="shield" style="width: 18px; height: 18px; color: #2563EB;"></i>
+        <span>Access & Security Actions</span>
+      </div>
+    </div>
+    <div class="sa-card-body" style="display: flex; gap: 14px; flex-wrap: wrap;">
+      <!-- Toggle Access -->
+      {% if shop.access_status == 'active' %}
+        <form method="POST" action="{{ url_for('super_admin.set_status', id=shop.id) }}" style="display: inline;">
+          <input type="hidden" name="status" value="disabled">
+          <button type="submit" class="sa-btn sa-btn-danger" onclick="return confirm('Disable access for this shop? Existing sessions will be terminated immediately.')">
+            <i data-lucide="power" style="width: 16px; height: 16px;"></i>
+            <span>Disable Access</span>
+          </button>
+        </form>
+      {% else %}
+        <form method="POST" action="{{ url_for('super_admin.set_status', id=shop.id) }}" style="display: inline;">
+          <input type="hidden" name="status" value="active">
+          <button type="submit" class="sa-btn sa-btn-success">
+            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+            <span>Enable Access</span>
+          </button>
+        </form>
+      {% endif %}
+
+      <!-- Reset Password Button -->
+      <button type="button" class="sa-btn sa-btn-secondary" onclick="openResetModal('{{ shop.id }}', '{{ shop.shop_name|escape }}', '{{ shop.owner_email|escape }}')">
+        <i data-lucide="key" style="width: 16px; height: 16px; color: #2563EB;"></i>
+        <span>Reset Password</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetModal" class="sa-modal-backdrop">
+  <div class="sa-modal-dialog">
+    <form id="resetForm" method="POST" action="">
+      <div class="sa-modal-header">
+        <div class="sa-modal-title">Reset Shop Owner Password</div>
+        <button type="button" class="sa-modal-close" onclick="closeSaModal('resetModal')">&times;</button>
+      </div>
+      <div class="sa-modal-body">
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #1E40AF; font-size: 0.88rem;" id="resetShopTitle">Shop</div>
+          <div style="font-size: 0.78rem; color: #3B82F6;" id="resetShopEmail">email@shop.com</div>
+        </div>
+
+        <div class="sa-form-group" style="margin-bottom: 0;">
+          <label class="sa-form-label" for="new_password_input">New Password *</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" name="new_password" id="new_password_input" class="sa-form-input" required placeholder="Minimum 6 characters">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="generateResetPassword()">Generate</button>
+          </div>
+          <div class="sa-form-hint">The shop owner will be required to change this password on their next login.</div>
+        </div>
+      </div>
+      <div class="sa-modal-footer">
+        <button type="button" class="sa-btn sa-btn-secondary" onclick="closeSaModal('resetModal')">Cancel</button>
+        <button type="submit" class="sa-btn sa-btn-primary">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openResetModal(shopId, shopName, email) {
+    document.getElementById("resetShopTitle").textContent = shopName;
+    document.getElementById("resetShopEmail").textContent = email;
+    document.getElementById("resetForm").action = `/super-admin/shops/${shopId}/reset-password`;
+    document.getElementById("new_password_input").value = "";
+    openSaModal("resetModal");
+  }
+
+  function generateResetPassword() {
+    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById("new_password_input").value = pass;
+  }
+</script>
+{% endblock %}

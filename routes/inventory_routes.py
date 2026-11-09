@@ -1,13 +1,17 @@
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash
+from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
 from services.product_service import (
     get_products, get_product_by_id, create_product, update_product, 
-    adjust_stock, get_stock_movements, get_categories, create_category
+    adjust_stock, get_stock_movements, get_categories, create_category,
+    delete_product
 )
 from services.business_service import get_business_by_id
 
 inventory_bp = Blueprint("inventory", __name__)
 
 @inventory_bp.route("/inventory")
+@inventory_bp.route("/products")
+@inventory_bp.route("/catalog")
+@inventory_bp.route("/catalogue")
 def list_products():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
@@ -169,3 +173,36 @@ def add_category():
     if name:
         create_category(biz_id, name, desc)
     return redirect(url_for("inventory.list_products"))
+
+@inventory_bp.route("/inventory/delete/<int:id>", methods=["POST"])
+@inventory_bp.route("/products/delete/<int:id>", methods=["POST"])
+def remove_product(id):
+    is_ajax = request.is_json or "application/json" in request.headers.get("Accept", "") or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    if "user_id" not in session:
+        if is_ajax:
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
+        return redirect(url_for("auth.login"))
+
+    biz_id = session.get("business_id")
+    if not biz_id:
+        if is_ajax:
+            return jsonify({"success": False, "error": "No business profile"}), 400
+        return redirect(url_for("auth.onboarding"))
+
+    try:
+        result = delete_product(biz_id, id)
+        if is_ajax:
+            return jsonify(result)
+        flash(result["message"], "success")
+        return redirect(url_for("inventory.list_products"))
+    except ValueError as ve:
+        if is_ajax:
+            return jsonify({"success": False, "error": str(ve)}), 404
+        flash(str(ve), "error")
+        return redirect(url_for("inventory.list_products"))
+    except Exception as e:
+        if is_ajax:
+            return jsonify({"success": False, "error": f"Failed to delete product: {str(e)}"}), 500
+        flash(f"Error: {str(e)}", "error")
+        return redirect(url_for("inventory.list_products"))

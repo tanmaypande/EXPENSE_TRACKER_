@@ -1,3 +1,4 @@
+import datetime
 from models.database import get_db_connection
 
 def get_products(business_id, search=None, category_id=None, low_stock=False, limit=100):
@@ -29,22 +30,22 @@ def get_products(business_id, search=None, category_id=None, low_stock=False, li
     conn.close()
     return [dict(r) for r in rows]
 
-def get_product_by_id(product_id, business_id=None):
+def get_product_by_id(product_id, business_id=None, active_only=False):
     conn = get_db_connection()
+    query = """
+    SELECT p.*, c.name as category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.id = ?
+    """
+    params = [product_id]
     if business_id:
-        row = conn.execute("""
-        SELECT p.*, c.name as category_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.id = ? AND p.business_id = ?
-        """, (product_id, business_id)).fetchone()
-    else:
-        row = conn.execute("""
-        SELECT p.*, c.name as category_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.id = ?
-        """, (product_id,)).fetchone()
+        query += " AND p.business_id = ?"
+        params.append(business_id)
+    if active_only:
+        query += " AND p.is_active = 1"
+
+    row = conn.execute(query, params).fetchone()
     conn.close()
     return dict(row) if row else None
 
@@ -173,3 +174,67 @@ def create_category(business_id, name, description=""):
     cat_id = cur.lastrowid
     conn.close()
     return cat_id
+
+def delete_product(business_id, product_id):
+    """
+    Safely deletes or archives a product:
+    1. Verifies ownership and existence within business_id.
+    2. Checks references in transactions:
+       - sale_items (invoices)
+       - purchase_items (supplier purchases)
+       - return_items (customer refunds)
+       - stock_movements (audit trail where reason != 'initial')
+    3. If referenced:
+       - Soft-deletes: sets is_active = 0, deleted_at = CURRENT_TIMESTAMP, stock_quantity = 0.
+       - Preserves complete historical accuracy for past invoices and accounting reports.
+    4. If unreferenced (unused product):
+       - Permanently removes the product and any initial setup stock movement.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    prod = cur.execute("""
+    SELECT id, name, sku, stock_quantity, purchase_price, selling_price 
+    FROM products 
+    WHERE id = ? AND business_id = ?
+    """, (product_id, business_id)).fetchone()
+
+    if not prod:
+        conn.close()
+        raise ValueError(f"Product #{product_id} not found or unauthorized.")
+
+    # Check for historical references
+    sales_cnt = cur.execute("SELECT COUNT(*) FROM sale_items WHERE product_id = ?", (product_id,)).fetchone()[0]
+    purchases_cnt = cur.execute("SELECT COUNT(*) FROM purchase_items WHERE product_id = ?", (product_id,)).fetchone()[0]
+    returns_cnt = cur.execute("SELECT COUNT(*) FROM return_items WHERE product_id = ?", (product_id,)).fetchone()[0]
+    movements_cnt = cur.execute("SELECT COUNT(*) FROM stock_movements WHERE product_id = ? AND reason != 'initial'", (product_id,)).fetchone()[0]
+
+    has_history = (sales_cnt > 0 or purchases_cnt > 0 or returns_cnt > 0 or movements_cnt > 0)
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if has_history:
+        # Soft delete / Archive: Keep historical records intact, hide from active catalog & POS
+        cur.execute("""
+        UPDATE products 
+        SET is_active = 0, deleted_at = ?, stock_quantity = 0 
+        WHERE id = ? AND business_id = ?
+        """, (now_str, product_id, business_id))
+        action = "archived"
+        message = f"Product '{prod['name']}' has transaction history and was safely archived to preserve financial records."
+    else:
+        # Safe permanent deletion: No historical ties
+        cur.execute("DELETE FROM stock_movements WHERE product_id = ? AND business_id = ?", (product_id, business_id))
+        cur.execute("DELETE FROM products WHERE id = ? AND business_id = ?", (product_id, business_id))
+        action = "deleted"
+        message = f"Product '{prod['name']}' was permanently deleted from inventory."
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "action": action,
+        "product_id": product_id,
+        "product_name": prod["name"],
+        "message": message
+    }

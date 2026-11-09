@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Super Admin | Platform Control Center{% endblock %}</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --sa-sidebar-bg: #0F172A;
+      --sa-sidebar-border: #1E293B;
+      --sa-sidebar-text: #94A3B8;
+      --sa-sidebar-active: #38BDF8;
+      --sa-sidebar-active-bg: rgba(56, 189, 248, 0.12);
+      
+      --sa-body-bg: #F8FAFC;
+      --sa-card-bg: #FFFFFF;
+      --sa-border: #E2E8F0;
+      --sa-text-main: #0F172A;
+      --sa-text-muted: #64748B;
+      
+      --sa-primary: #2563EB;
+      --sa-primary-hover: #1D4ED8;
+      --sa-success: #10B981;
+      --sa-danger: #EF4444;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--sa-body-bg);
+      color: var(--sa-text-main);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Sidebar */
+    .sa-sidebar {
+      width: 250px;
+      background-color: var(--sa-sidebar-bg);
+      border-right: 1px solid var(--sa-sidebar-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      z-index: 50;
+    }
+
+    .sa-brand {
+      padding: 24px 20px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--sa-sidebar-border);
+    }
+
+    .sa-brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #38BDF8 0%, #2563EB 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .sa-brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+
+    .sa-brand-tag {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38BDF8;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      display: inline-block;
+      margin-top: 2px;
+    }
+
+    .sa-nav {
+      flex: 1;
+      padding: 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sa-nav-heading {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #475569;
+      padding: 12px 12px 6px;
+    }
+
+    .sa-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      color: var(--sa-sidebar-text);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .sa-nav-item:hover {
+      color: #FFFFFF;
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .sa-nav-item.active {
+      color: #38BDF8;
+      background-color: var(--sa-sidebar-active-bg);
+      font-weight: 600;
+      box-shadow: inset 3px 0 0 #38BDF8;
+    }
+
+    .sa-nav-item i {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .sa-sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid var(--sa-sidebar-border);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .sa-admin-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sa-admin-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #2563EB;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .sa-admin-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sa-admin-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #FFFFFF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sa-admin-role {
+      font-size: 0.7rem;
+      color: #38BDF8;
+      font-weight: 500;
+    }
+
+    .sa-signout-btn {
+      color: #94A3B8;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      transition: color 0.15s ease;
+      text-decoration: none;
+    }
+
+    .sa-signout-btn:hover {
+      color: #EF4444;
+    }
+
+    /* Main Content Container */
+    .sa-main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow-y: auto;
+    }
+
+    /* Header Bar */
+    .sa-topbar {
+      height: 64px;
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--sa-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .sa-topbar-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--sa-text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sa-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sa-content {
+      padding: 28px;
+      flex: 1;
+    }
+
+    /* Flash Messages */
+    .sa-flash-container {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sa-alert {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sa-alert-success {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+
+    .sa-alert-error {
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
+    }
+
+    .sa-alert-warning {
+      background: #FFFBEB;
+      color: #92400E;
+      border: 1px solid #FDE68A;
+    }
+
+    .sa-alert-info {
+      background: #EFF6FF;
+      color: #1E40AF;
+      border: 1px solid #BFDBFE;
+    }
+
+    /* Cards */
+    .sa-card {
+      background: var(--sa-card-bg);
+      border: 1px solid var(--sa-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .sa-card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--sa-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .sa-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--sa-text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sa-card-body {
+      padding: 24px;
+    }
+
+    /* Buttons */
+    .sa-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .sa-btn-primary {
+      background: var(--sa-primary);
+      color: #FFFFFF;
+      border-color: var(--sa-primary);
+    }
+    .sa-btn-primary:hover {
+      background: var(--sa-primary-hover);
+    }
+
+    .sa-btn-secondary {
+      background: #FFFFFF;
+      color: #334155;
+      border-color: var(--sa-border);
+    }
+    .sa-btn-secondary:hover {
+      background: #F8FAFC;
+    }
+
+    .sa-btn-success {
+      background: #10B981;
+      color: #FFFFFF;
+    }
+    .sa-btn-success:hover {
+      background: #059669;
+    }
+
+    .sa-btn-danger {
+      background: #EF4444;
+      color: #FFFFFF;
+    }
+    .sa-btn-danger:hover {
+      background: #DC2626;
+    }
+
+    .sa-btn-sm {
+      padding: 5px 11px;
+      font-size: 0.78rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Badges */
+    .sa-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .sa-badge-active {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+
+    .sa-badge-disabled {
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
+    }
+
+    /* Tables */
+    .sa-table-responsive {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .sa-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .sa-table th {
+      background: #F8FAFC;
+      color: #475569;
+      font-weight: 600;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--sa-border);
+      white-space: nowrap;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+
+    .sa-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid #F1F5F9;
+      color: #334155;
+      vertical-align: middle;
+    }
+
+    .sa-table tr:hover td {
+      background-color: #F8FAFC;
+    }
+
+    /* Form Controls */
+    .sa-form-group {
+      margin-bottom: 18px;
+    }
+
+    .sa-form-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .sa-form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--sa-border);
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--sa-text-main);
+      background: #FFFFFF;
+      transition: border-color 0.15s ease;
+    }
+
+    .sa-form-input:focus {
+      outline: none;
+      border-color: var(--sa-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .sa-form-hint {
+      font-size: 0.74rem;
+      color: #64748B;
+      margin-top: 4px;
+    }
+
+    /* Modal */
+    .sa-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .sa-modal-backdrop.open {
+      display: flex;
+    }
+
+    .sa-modal-dialog {
+      background: #FFFFFF;
+      border-radius: var(--radius-lg);
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+
+    .sa-modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--sa-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sa-modal-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--sa-text-main);
+    }
+
+    .sa-modal-close {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sa-modal-close:hover {
+      color: #0F172A;
+    }
+
+    .sa-modal-body {
+      padding: 24px;
+    }
+
+    .sa-modal-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--sa-border);
+      background: #F8FAFC;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Super Admin Sidebar -->
+  <aside class="sa-sidebar">
+    <div class="sa-brand">
+      <div class="sa-brand-icon">
+        <i data-lucide="shield-check" style="width: 22px; height: 22px;"></i>
+      </div>
+      <div>
+        <div class="sa-brand-title">ShopLedger</div>
+        <div class="sa-brand-tag">Super Admin</div>
+      </div>
+    </div>
+
+    <nav class="sa-nav">
+      <div class="sa-nav-heading">Platform Administration</div>
+      
+      <a href="{{ url_for('super_admin.dashboard') }}" class="sa-nav-item {% if request.endpoint == 'super_admin.dashboard' %}active{% endif %}">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('super_admin.list_shops') }}" class="sa-nav-item {% if request.endpoint in ['super_admin.list_shops', 'super_admin.shop_detail'] %}active{% endif %}">
+        <i data-lucide="store"></i>
+        <span>Registered Shops</span>
+      </a>
+
+      <a href="{{ url_for('super_admin.create_shop') }}" class="sa-nav-item {% if request.endpoint == 'super_admin.create_shop' %}active{% endif %}">
+        <i data-lucide="user-plus"></i>
+        <span>Create Shop Owner</span>
+      </a>
+
+      <div class="sa-nav-heading">Security</div>
+
+      <a href="javascript:void(0)" onclick="openSaModal('saPasswordModal')" class="sa-nav-item">
+        <i data-lucide="key-round"></i>
+        <span>Change My Password</span>
+      </a>
+    </nav>
+
+    <div class="sa-sidebar-footer">
+      <div class="sa-admin-pill">
+        <div class="sa-admin-avatar">TP</div>
+        <div class="sa-admin-info">
+          <div class="sa-admin-name">{{ session.get('user_name', 'Tanmay Pandey') }}</div>
+          <div class="sa-admin-role">Super Admin (Owner)</div>
+        </div>
+        <a href="{{ url_for('super_admin.logout') }}" class="sa-signout-btn" title="Sign Out">
+          <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Container -->
+  <div class="sa-main-container">
+    <header class="sa-topbar">
+      <div class="sa-topbar-title">
+        {% block page_title %}
+          <i data-lucide="shield" style="width: 20px; height: 20px; color: #2563EB;"></i>
+          <span>Super Admin Control Panel</span>
+        {% endblock %}
+      </div>
+      <div class="sa-topbar-actions">
+        <a href="{{ url_for('super_admin.create_shop') }}" class="sa-btn sa-btn-primary sa-btn-sm">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+          <span>Create Shop Owner</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="sa-content">
+      <!-- Flash Notifications -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="sa-flash-container">
+            {% for category, message in messages %}
+              <div class="sa-alert sa-alert-{{ 'success' if category == 'success' else 'error' }}">
+                <i data-lucide="{{ 'check-circle' if category == 'success' else 'alert-circle' }}" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="saPasswordModal" class="sa-modal-backdrop">
+    <div class="sa-modal-dialog">
+      <form method="POST" action="{{ url_for('super_admin.admin_change_password') }}">
+        <div class="sa-modal-header">
+          <div class="sa-modal-title">Change My Super Admin Password</div>
+          <button type="button" class="sa-modal-close" onclick="closeSaModal('saPasswordModal')">&times;</button>
+        </div>
+        <div class="sa-modal-body">
+          <div class="sa-form-group">
+            <label class="sa-form-label" for="sa_curr_pass">Current Password *</label>
+            <input type="password" name="current_password" id="sa_curr_pass" class="sa-form-input" required placeholder="Enter your current password">
+          </div>
+
+          <div class="sa-form-group">
+            <label class="sa-form-label" for="sa_new_pass">New Password *</label>
+            <input type="password" name="new_password" id="sa_new_pass" class="sa-form-input" required placeholder="Minimum 6 characters">
+          </div>
+
+          <div class="sa-form-group" style="margin-bottom: 0;">
+            <label class="sa-form-label" for="sa_conf_pass">Confirm New Password *</label>
+            <input type="password" name="confirm_password" id="sa_conf_pass" class="sa-form-input" required placeholder="Re-type new password">
+          </div>
+        </div>
+        <div class="sa-modal-footer">
+          <button type="button" class="sa-btn sa-btn-secondary" onclick="closeSaModal('saPasswordModal')">Cancel</button>
+          <button type="submit" class="sa-btn sa-btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) lucide.createIcons();
+    });
+
+    function openSaModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.add('open');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeSaModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.remove('open');
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

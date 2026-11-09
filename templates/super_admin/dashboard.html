@@ -1,0 +1,75 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Dashboard | Super Admin Control Panel{% endblock %}
+
+{% block page_title %}
+  <i data-lucide="layout-dashboard" style="width: 22px; height: 22px; color: #2563EB;"></i>
+  <span>Super Admin Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<!-- Simple 3-Metric Overview Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 28px;">
+  <!-- Total Registered Shops -->
+  <div class="sa-card" style="margin-bottom: 0; padding: 24px; border-left: 4px solid #2563EB;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748B; letter-spacing: 0.05em;">Total Registered Shops</span>
+      <div style="width: 38px; height: 38px; border-radius: 8px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="store" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #0F172A;" id="stat-total-shops">
+      {{ metrics.total_shops }}
+    </div>
+    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">All shops registered on your software</div>
+  </div>
+
+  <!-- Number of Active Shops -->
+  <div class="sa-card" style="margin-bottom: 0; padding: 24px; border-left: 4px solid #10B981;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748B; letter-spacing: 0.05em;">Active Shops</span>
+      <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; color: #10B981; display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #10B981;" id="stat-active-shops">
+      {{ metrics.active_shops }}
+    </div>
+    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Shops with access currently enabled</div>
+  </div>
+
+  <!-- Number of Disabled Shops -->
+  <div class="sa-card" style="margin-bottom: 0; padding: 24px; border-left: 4px solid #EF4444;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748B; letter-spacing: 0.05em;">Disabled Shops</span>
+      <div style="width: 38px; height: 38px; border-radius: 8px; background: #FEF2F2; color: #EF4444; display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="slash" style="width: 20px; height: 20px;"></i>
+      </div>
+    </div>
+    <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #EF4444;" id="stat-disabled-shops">
+      {{ metrics.disabled_shops }}
+    </div>
+    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Shops with access blocked</div>
+  </div>
+</div>
+
+<!-- Quick Action Shortcuts -->
+<div class="sa-card">
+  <div class="sa-card-header">
+    <div class="sa-card-title">
+      <i data-lucide="zap" style="width: 18px; height: 18px; color: #2563EB;"></i>
+      <span>Quick Administrative Actions</span>
+    </div>
+  </div>
+  <div class="sa-card-body" style="display: flex; gap: 16px; flex-wrap: wrap;">
+    <a href="{{ url_for('super_admin.create_shop') }}" class="sa-btn sa-btn-primary" style="padding: 14px 22px;">
+      <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+      <span style="font-size: 0.95rem;">Create Shop Owner</span>
+    </a>
+    <a href="{{ url_for('super_admin.list_shops') }}" class="sa-btn sa-btn-secondary" style="padding: 14px 22px;">
+      <i data-lucide="store" style="width: 18px; height: 18px;"></i>
+      <span style="font-size: 0.95rem;">View Registered Shops</span>
+    </a>
+  </div>
+</div>
+{% endblock %}

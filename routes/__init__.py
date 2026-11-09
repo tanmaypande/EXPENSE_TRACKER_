@@ -9,6 +9,7 @@ from .expense_routes import expense_bp
 from .return_routes import return_bp
 from .report_routes import report_bp
 from .udhar_routes import udhar_bp
+from .super_admin_routes import super_admin_bp
 
 def register_routes(app):
     app.register_blueprint(auth_bp)
@@ -22,3 +23,4 @@ def register_routes(app):
     app.register_blueprint(return_bp)
     app.register_blueprint(report_bp)
     app.register_blueprint(udhar_bp)
+    app.register_blueprint(super_admin_bp)

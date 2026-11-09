@@ -1,0 +1,123 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Create Shop Owner | Super Admin{% endblock %}
+
+{% block page_title %}
+  <i data-lucide="user-plus" style="width: 22px; height: 22px; color: #2563EB;"></i>
+  <span>Create Shop Owner</span>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 0 auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #0F172A;">Create Shop Owner</h2>
+      <p style="font-size: 0.84rem; color: #64748B;">Enter the merchant's credentials and shop name to activate their software access.</p>
+    </div>
+    <a href="{{ url_for('super_admin.list_shops') }}" class="sa-btn sa-btn-secondary">
+      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+      <span>Back to Shops</span>
+    </a>
+  </div>
+
+  {% if error %}
+    <div class="sa-alert sa-alert-error" style="margin-bottom: 20px;">
+      <i data-lucide="alert-circle" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+      <span>{{ error }}</span>
+    </div>
+  {% endif %}
+
+  <div class="sa-card">
+    <div class="sa-card-header">
+      <div class="sa-card-title">
+        <i data-lucide="user" style="width: 18px; height: 18px; color: #2563EB;"></i>
+        <span>Account & Shop Details</span>
+      </div>
+    </div>
+    <div class="sa-card-body">
+      <form method="POST" action="{{ url_for('super_admin.create_shop') }}" autocomplete="off">
+        <!-- 1. Shop Owner Name -->
+        <div class="sa-form-group">
+          <label class="sa-form-label" for="owner_name">Shop Owner Name *</label>
+          <input 
+            type="text" 
+            name="owner_name" 
+            id="owner_name" 
+            class="sa-form-input" 
+            placeholder="e.g. Ramesh Sharma" 
+            required 
+            autofocus
+          >
+        </div>
+
+        <!-- 2. Email Address -->
+        <div class="sa-form-group">
+          <label class="sa-form-label" for="owner_email">Email Address *</label>
+          <input 
+            type="email" 
+            name="owner_email" 
+            id="owner_email" 
+            class="sa-form-input" 
+            placeholder="e.g. ramesh@gmail.com" 
+            required
+          >
+          <div class="sa-form-hint">Used by the merchant to sign in. Must be unique.</div>
+        </div>
+
+        <!-- 3. Initial Password -->
+        <div class="sa-form-group">
+          <label class="sa-form-label" for="initial_password">Initial Password *</label>
+          <div style="display: flex; gap: 8px;">
+            <input 
+              type="text" 
+              name="initial_password" 
+              id="initial_password" 
+              class="sa-form-input" 
+              placeholder="Set an initial password (min 6 characters)" 
+              required
+            >
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="generatePassword()" title="Generate random password">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Generate</span>
+            </button>
+          </div>
+          <div class="sa-form-hint">The shop owner will be required to change this password on their first login.</div>
+        </div>
+
+        <!-- 4. Shop Name -->
+        <div class="sa-form-group" style="margin-bottom: 24px;">
+          <label class="sa-form-label" for="shop_name">Shop Name *</label>
+          <input 
+            type="text" 
+            name="shop_name" 
+            id="shop_name" 
+            class="sa-form-input" 
+            placeholder="e.g. Sharma Kirana & General Store" 
+            required
+          >
+        </div>
+
+        <!-- Submit Button -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--sa-border); padding-top: 18px;">
+          <a href="{{ url_for('super_admin.list_shops') }}" class="sa-btn sa-btn-secondary">Cancel</a>
+          <button type="submit" class="sa-btn sa-btn-primary" style="padding: 11px 24px; font-size: 0.92rem;">
+            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+            <span>Create Shop Owner</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function generatePassword() {
+    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById("initial_password").value = pass;
+  }
+</script>
+{% endblock %}

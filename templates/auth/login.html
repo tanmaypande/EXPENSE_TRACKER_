@@ -37,6 +37,17 @@
       </div>
     {% endif %}
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="auth-alert {{ 'error' if category == 'error' else 'warning' }}" style="background: {{ '#FEF2F2' if category == 'error' else '#FFFBEB' }}; border: 1px solid {{ '#FECACA' if category == 'error' else '#FDE68A' }}; color: {{ '#B91C1C' if category == 'error' else '#92400E' }}; padding: 10px 14px; border-radius: var(--radius-md); font-size: 0.82rem; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="{{ 'alert-circle' if category == 'error' else 'info' }}" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+            <span>{{ msg }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <form action="{{ url_for('auth.login') }}" method="POST" class="auth-form">
       <div class="form-group">
         <label class="form-label">Email</label>
@@ -61,11 +72,6 @@
         Log in to Dashboard
       </button>
     </form>
-
-    <div class="auth-footer">
-      <span>Don't have a shop account?</span>
-      <a href="{{ url_for('auth.signup') }}" class="auth-link">Register shop</a>
-    </div>
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>

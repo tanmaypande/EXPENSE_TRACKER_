@@ -41,7 +41,7 @@
         <i data-lucide="package" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value">{{ total_items }}</div>
+    <div class="kpi-value" id="kpi-total-items">{{ total_items }}</div>
     <div class="kpi-meta">Active SKU entries in shop</div>
   </div>
 
@@ -52,7 +52,7 @@
         <i data-lucide="indian-rupee" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;">{{ business.currency }}{{ "{:,.2f}".format(total_valuation) }}</div>
+    <div class="kpi-value" style="font-family: 'JetBrains Mono', monospace;" id="kpi-total-valuation">{{ business.currency }}{{ "{:,.2f}".format(total_valuation) }}</div>
     <div class="kpi-meta">Current inventory purchase cost</div>
   </div>
 
@@ -63,7 +63,7 @@
         <i data-lucide="alert-triangle" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value" style="color: #D97706;">{{ low_stock_count }}</div>
+    <div class="kpi-value" style="color: #D97706;" id="kpi-low-stock">{{ low_stock_count }}</div>
     <div class="kpi-meta">Below reorder safety threshold</div>
   </div>
 
@@ -74,7 +74,7 @@
         <i data-lucide="x-circle" style="width: 20px; height: 20px;"></i>
       </div>
     </div>
-    <div class="kpi-value" style="color: var(--accent-red);">{{ out_of_stock_count }}</div>
+    <div class="kpi-value" style="color: var(--accent-red);" id="kpi-out-of-stock">{{ out_of_stock_count }}</div>
     <div class="kpi-meta">Requires urgent inward purchase</div>
   </div>
 </div>
@@ -121,11 +121,11 @@
       <i data-lucide="package" style="width: 18px; height: 18px; color: var(--accent-green);"></i>
       Products Directory
     </h3>
-    <span style="font-size: 0.82rem; color: var(--text-muted);">{{ products|length }} Products</span>
+    <span style="font-size: 0.82rem; color: var(--text-muted);" id="table-products-count">{{ products|length }} Products</span>
   </div>
 
   <div class="table-container">
-    <table class="data-table">
+    <table class="data-table" id="products-table">
       <thead>
         <tr>
           <th>Product Name & Brand</th>
@@ -139,17 +139,17 @@
           <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="products-table-body">
         {% if products and products|length > 0 %}
           {% for p in products %}
-            <tr>
+            <tr id="product-row-{{ p.id }}" data-id="{{ p.id }}" data-stock="{{ p.stock_quantity }}" data-cost="{{ p.purchase_price }}" data-min-stock="{{ p.min_stock_level }}">
               <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <div style="width: 34px; height: 34px; border-radius: var(--radius-md); background: #F1F5F9; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #475569; font-weight: 600; font-size: 0.85rem;">
                     {{ p.name[0]|upper }}
                   </div>
                   <div>
-                    <div style="font-weight: 600; color: var(--text-main);">{{ p.name }}</div>
+                    <div style="font-weight: 600; color: var(--text-main);" class="product-item-name">{{ p.name }}</div>
                     {% if p.brand %}
                       <span style="font-size: 0.74rem; color: var(--text-muted);">{{ p.brand }}</span>
                     {% endif %}
@@ -202,6 +202,14 @@
                   <a href="{{ url_for('inventory.edit_product', id=p.id) }}" class="btn btn-secondary btn-sm" title="Edit Product Details">
                     <i data-lucide="edit-2" style="width: 13px; height: 13px;"></i> Edit
                   </a>
+                  <!-- Delete Product -->
+                  <button type="button" class="btn btn-secondary btn-sm delete-product-btn" 
+                          style="color: #DC2626; border-color: rgba(220, 38, 38, 0.35); padding: 5px 9px;" 
+                          onclick="openDeleteModal({{ p.id }}, '{{ p.name|replace("'", "\\'") }}', '{{ p.sku|default('', true)|replace("'", "\\'") }}', {{ p.stock_quantity }}, {{ p.purchase_price }})" 
+                          title="Delete Product">
+                    <i data-lucide="trash-2" style="width: 13px; height: 13px; color: #DC2626;"></i>
+                    <span>Delete</span>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -282,10 +290,70 @@
     </form>
   </div>
 </div>
+
+<!-- Delete Product Confirmation Modal -->
+<div class="modal-backdrop" id="delete-product-modal" style="display: none; align-items: center; justify-content: center; z-index: 1050;">
+  <div class="modal-content" style="max-width: 480px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+    <div class="modal-header" style="background: #FEF2F2; border-bottom: 1px solid #FEE2E2; padding: 16px 20px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: #FEE2E2; color: #DC2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+        </div>
+        <div>
+          <h3 style="font-size: 1.05rem; font-weight: 700; color: #991B1B; margin: 0;">Delete Product</h3>
+          <span style="font-size: 0.74rem; color: #B91C1C;">Inventory & Catalog Management</span>
+        </div>
+      </div>
+      <button type="button" class="btn-close" onclick="closeDeleteModal()" title="Close">&times;</button>
+    </div>
+
+    <form id="deleteProductForm" method="POST" action="">
+      <div class="modal-body" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="delete-prod-id" name="product_id">
+        <input type="hidden" id="delete-prod-cost" value="0">
+        <input type="hidden" id="delete-prod-stock-val" value="0">
+
+        <!-- Product Preview Card -->
+        <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 16px;">
+          <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);" id="delete-prod-name">Product Name</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; display: flex; gap: 16px; flex-wrap: wrap;">
+            <span id="delete-prod-sku">SKU: -</span>
+            <span id="delete-prod-stock">Current Stock: 0</span>
+          </div>
+        </div>
+
+        <!-- Confirmation Prompt Required By Spec -->
+        <div style="font-size: 0.92rem; color: #1E293B; font-weight: 600; line-height: 1.5;">
+          Are you sure you want to delete this product? This action may affect inventory records.
+        </div>
+
+        <!-- Explanatory Safety Notice -->
+        <div style="font-size: 0.76rem; color: #475569; line-height: 1.45; background: #FFFBEB; border: 1px solid #FDE68A; padding: 10px 14px; border-radius: var(--radius-sm); display: flex; gap: 8px;">
+          <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #D97706; flex-shrink: 0; margin-top: 2px;"></i>
+          <span><strong>Safe Financial Integrity:</strong> If this product is referenced by past invoices, sales bills, or purchase receipts, it will be safely archived to protect accounting reports while being removed from active inventory and POS counter.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 20px; background: #FFFFFF; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()" id="cancel-delete-btn">
+          Cancel
+        </button>
+        <button type="submit" class="btn" id="confirm-delete-btn" style="background: #DC2626; color: #FFFFFF; border: 1px solid #DC2626; font-weight: 600; padding: 8px 18px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+          <span>Delete Product</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+  let activeDeleteProductId = null;
+  let activeDeleteStock = 0;
+  let activeDeleteCost = 0;
+
   function openAdjustModal(id, name, stock) {
     document.getElementById("adjust-prod-id").value = id;
     document.getElementById("adjust-prod-name").textContent = name;
@@ -307,17 +375,188 @@
     modal.classList.remove("show");
   }
 
-  // Backdrop click listener to dismiss modal
-  document.getElementById("stock-adjust-modal").addEventListener("click", function(e) {
-    if (e.target === this) {
-      closeAdjustModal();
-    }
-  });
+  function openDeleteModal(id, name, sku, stock, purchasePrice) {
+    activeDeleteProductId = id;
+    activeDeleteStock = parseFloat(stock) || 0;
+    activeDeleteCost = parseFloat(purchasePrice) || 0;
 
-  // Escape key to dismiss modal
+    document.getElementById("delete-prod-id").value = id;
+    document.getElementById("delete-prod-name").textContent = name;
+    document.getElementById("delete-prod-sku").textContent = `SKU: ${sku || '—'}`;
+    document.getElementById("delete-prod-stock").textContent = `Current Stock: ${stock}`;
+    document.getElementById("delete-prod-cost").value = activeDeleteCost;
+    document.getElementById("delete-prod-stock-val").value = activeDeleteStock;
+    document.getElementById("deleteProductForm").action = `/inventory/delete/${id}`;
+
+    const modal = document.getElementById("delete-product-modal");
+    modal.style.display = "flex";
+    modal.classList.add("show");
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function closeDeleteModal() {
+    const modal = document.getElementById("delete-product-modal");
+    if (modal) {
+      modal.style.display = "none";
+      modal.classList.remove("show");
+    }
+    activeDeleteProductId = null;
+  }
+
+  // Handle Delete Form Submit with AJAX
+  const deleteForm = document.getElementById("deleteProductForm");
+  if (deleteForm) {
+    deleteForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const id = activeDeleteProductId;
+      if (!id) return;
+
+      const submitBtn = document.getElementById("confirm-delete-btn");
+      const cancelBtn = document.getElementById("cancel-delete-btn");
+      submitBtn.disabled = true;
+      cancelBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Deleting...</span>`;
+
+      try {
+        const res = await fetch(`/inventory/delete/${id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          // 1. Animate row removal
+          const row = document.getElementById(`product-row-${id}`);
+          if (row) {
+            row.style.transition = "all 0.25s ease";
+            row.style.opacity = "0";
+            row.style.transform = "translateX(20px)";
+            setTimeout(() => {
+              row.remove();
+              // Check if table is empty
+              const tbody = document.getElementById("products-table-body");
+              if (tbody && tbody.children.length === 0) {
+                tbody.innerHTML = `
+                  <tr>
+                    <td colspan="9" style="text-align: center; padding: 56px 24px; color: var(--text-muted);">
+                      <div style="width: 54px; height: 54px; border-radius: var(--radius-full); background: #F1F5F9; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                        <i data-lucide="package" style="width: 26px; height: 26px; color: var(--text-muted);"></i>
+                      </div>
+                      <h3 style="font-weight: 600; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">No Products Found</h3>
+                      <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto 16px;">Your store catalog is empty.</p>
+                      <a href="/inventory/add" class="btn btn-primary btn-sm"><i data-lucide="plus" style="width: 14px; height: 14px;"></i> Add First Product</a>
+                    </td>
+                  </tr>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+              }
+            }, 250);
+          }
+
+          // 2. Update KPI Total Products
+          const totalKpi = document.getElementById("kpi-total-items");
+          if (totalKpi) {
+            let current = parseInt(totalKpi.textContent) || 0;
+            totalKpi.textContent = Math.max(0, current - 1);
+          }
+
+          // 3. Update Table Header Count
+          const headerCount = document.getElementById("table-products-count");
+          if (headerCount) {
+            let current = parseInt(headerCount.textContent) || 0;
+            headerCount.textContent = `${Math.max(0, current - 1)} Products`;
+          }
+
+          // 4. Update Estimated Valuation KPI
+          const valKpi = document.getElementById("kpi-total-valuation");
+          if (valKpi) {
+            const rawVal = parseFloat(valKpi.textContent.replace(/[^0-9.-]+/g,"")) || 0;
+            const stockCostRemoved = activeDeleteStock * activeDeleteCost;
+            const newVal = Math.max(0, rawVal - stockCostRemoved);
+            valKpi.textContent = `₹${newVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          }
+
+          // 5. Update Low/Out of Stock KPIs if applicable
+          if (activeDeleteStock <= 0) {
+            const outKpi = document.getElementById("kpi-out-of-stock");
+            if (outKpi) outKpi.textContent = Math.max(0, (parseInt(outKpi.textContent) || 0) - 1);
+          }
+
+          // Close modal
+          closeDeleteModal();
+
+          // Show floating toast notification
+          showToast(data.message || "Product deleted successfully.", "success");
+
+        } else {
+          alert(`Deletion failed: ${data.error || 'Unknown error'}`);
+          submitBtn.disabled = false;
+          cancelBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="trash-2" style="width: 15px; height: 15px;"></i><span>Delete Product</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      } catch (err) {
+        // Fallback to standard form submission if fetch/network fails
+        deleteForm.submit();
+      }
+    });
+  }
+
+  function showToast(message, type) {
+    const existing = document.getElementById("app-toast-alert");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "app-toast-alert";
+    toast.style.position = "fixed";
+    toast.style.bottom = "24px";
+    toast.style.right = "24px";
+    toast.style.zIndex = "9999";
+    toast.style.background = type === "success" ? "#065F46" : "#991B1B";
+    toast.style.color = "#FFFFFF";
+    toast.style.padding = "12px 18px";
+    toast.style.borderRadius = "8px";
+    toast.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.2)";
+    toast.style.fontSize = "0.85rem";
+    toast.style.fontWeight = "600";
+    toast.style.display = "flex";
+    toast.style.alignItems = "center";
+    toast.style.gap = "8px";
+    toast.innerHTML = `<i data-lucide="check-circle" style="width: 16px; height: 16px;"></i><span>${message}</span>`;
+    document.body.appendChild(toast);
+    if (window.lucide) window.lucide.createIcons();
+
+    setTimeout(() => {
+      toast.style.transition = "opacity 0.3s ease";
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // Backdrop click listener to dismiss modals
+  const stockModalElem = document.getElementById("stock-adjust-modal");
+  if (stockModalElem) {
+    stockModalElem.addEventListener("click", function(e) {
+      if (e.target === this) closeAdjustModal();
+    });
+  }
+
+  const deleteModalElem = document.getElementById("delete-product-modal");
+  if (deleteModalElem) {
+    deleteModalElem.addEventListener("click", function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+  }
+
+  // Escape key to dismiss modals
   document.addEventListener("keydown", function(e) {
     if (e.key === "Escape") {
       closeAdjustModal();
+      closeDeleteModal();
     }
   });
 </script>

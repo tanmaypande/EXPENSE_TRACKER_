@@ -1,0 +1,210 @@
+{% extends "super_admin/base.html" %}
+
+{% block title %}Registered Shops | Super Admin{% endblock %}
+
+{% block page_title %}
+  <i data-lucide="store" style="width: 22px; height: 22px; color: #2563EB;"></i>
+  <span>Registered Shops List</span>
+{% endblock %}
+
+{% block content %}
+<!-- Search Bar -->
+<div class="sa-card" style="margin-bottom: 20px;">
+  <div class="sa-card-body" style="padding: 16px 20px;">
+    <form method="GET" action="{{ url_for('super_admin.list_shops') }}" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+      <div style="position: relative; flex: 1; min-width: 280px; max-width: 500px;">
+        <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94A3B8;"></i>
+        <input 
+          type="text" 
+          name="search" 
+          value="{{ search or '' }}" 
+          placeholder="Search by owner name, email or shop name..." 
+          class="sa-form-input" 
+          style="padding-left: 36px;"
+        >
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button type="submit" class="sa-btn sa-btn-primary">
+          <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+          <span>Search</span>
+        </button>
+        {% if search %}
+          <a href="{{ url_for('super_admin.list_shops') }}" class="sa-btn sa-btn-secondary">Clear</a>
+        {% endif %}
+        <a href="{{ url_for('super_admin.create_shop') }}" class="sa-btn sa-btn-primary">
+          <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
+          <span>Create Shop Owner</span>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Registered Shops Table -->
+<div class="sa-card">
+  <div class="sa-card-header">
+    <div class="sa-card-title">
+      <i data-lucide="list" style="width: 18px; height: 18px; color: #2563EB;"></i>
+      <span>All Registered Shops ({{ shops|length }})</span>
+    </div>
+  </div>
+  <div class="sa-table-responsive">
+    <table class="sa-table">
+      <thead>
+        <tr>
+          <th>Shop Owner Name</th>
+          <th>Shop Name</th>
+          <th>Email Address</th>
+          <th>Account Creation Date</th>
+          <th>Access Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shops %}
+          <tr>
+            <!-- Shop Owner Name -->
+            <td>
+              <div style="font-weight: 600; color: #0F172A;">
+                {{ s.owner_name or 'Store Owner' }}
+              </div>
+            </td>
+
+            <!-- Shop Name -->
+            <td>
+              <div style="font-weight: 700; color: #1E293B;">
+                {{ s.shop_name }}
+              </div>
+            </td>
+
+            <!-- Email Address -->
+            <td>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #475569;">
+                {{ s.owner_email }}
+              </div>
+            </td>
+
+            <!-- Account Creation Date -->
+            <td style="font-size: 0.82rem; color: #64748B;">
+              {{ s.created_at[:10] if s.created_at else '-' }}
+            </td>
+
+            <!-- Access Status -->
+            <td>
+              {% if s.access_status == 'active' %}
+                <span class="sa-badge sa-badge-active">
+                  <i data-lucide="check" style="width: 12px; height: 12px;"></i> Active
+                </span>
+              {% else %}
+                <span class="sa-badge sa-badge-disabled">
+                  <i data-lucide="slash" style="width: 12px; height: 12px;"></i> Disabled
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Actions: Enable / Disable Access, Reset Password, View Details -->
+            <td style="text-align: right;">
+              <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <!-- View Details -->
+                <a href="{{ url_for('super_admin.shop_detail', id=s.id) }}" class="sa-btn sa-btn-secondary sa-btn-sm" title="View Shop Details">
+                  <i data-lucide="eye" style="width: 13px; height: 13px;"></i>
+                  <span>View Details</span>
+                </a>
+
+                <!-- Enable / Disable Access Form -->
+                {% if s.access_status == 'active' %}
+                  <form method="POST" action="{{ url_for('super_admin.set_status', id=s.id) }}" style="display: inline;">
+                    <input type="hidden" name="status" value="disabled">
+                    <button type="submit" class="sa-btn sa-btn-danger sa-btn-sm" onclick="return confirm('Disable access for {{ s.shop_name }}? Live sessions will be revoked.')" title="Disable Access">
+                      <i data-lucide="power" style="width: 13px; height: 13px;"></i>
+                      <span>Disable Access</span>
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="POST" action="{{ url_for('super_admin.set_status', id=s.id) }}" style="display: inline;">
+                    <input type="hidden" name="status" value="active">
+                    <button type="submit" class="sa-btn sa-btn-success sa-btn-sm" title="Enable Access">
+                      <i data-lucide="check" style="width: 13px; height: 13px;"></i>
+                      <span>Enable Access</span>
+                    </button>
+                  </form>
+                {% endif %}
+
+                <!-- Reset Password Button -->
+                <button 
+                  type="button" 
+                  class="sa-btn sa-btn-secondary sa-btn-sm"
+                  onclick="openResetModal('{{ s.id }}', '{{ s.shop_name|escape }}', '{{ s.owner_email|escape }}')"
+                  title="Reset Password"
+                >
+                  <i data-lucide="key" style="width: 13px; height: 13px; color: #2563EB;"></i>
+                  <span>Reset Password</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 48px; color: #64748B;">
+              <i data-lucide="store" style="width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.4;"></i>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #334155;">No registered shops found.</div>
+              <p style="font-size: 0.82rem; margin-top: 4px;">Click "Create Shop Owner" above to add your first merchant account.</p>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetModal" class="sa-modal-backdrop">
+  <div class="sa-modal-dialog">
+    <form id="resetForm" method="POST" action="">
+      <div class="sa-modal-header">
+        <div class="sa-modal-title">Reset Shop Owner Password</div>
+        <button type="button" class="sa-modal-close" onclick="closeSaModal('resetModal')">&times;</button>
+      </div>
+      <div class="sa-modal-body">
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #1E40AF; font-size: 0.88rem;" id="resetShopTitle">Shop</div>
+          <div style="font-size: 0.78rem; color: #3B82F6;" id="resetShopEmail">email@shop.com</div>
+        </div>
+
+        <div class="sa-form-group" style="margin-bottom: 0;">
+          <label class="sa-form-label" for="new_password_input">New Password *</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" name="new_password" id="new_password_input" class="sa-form-input" required placeholder="Minimum 6 characters">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="generateResetPassword()">Generate</button>
+          </div>
+          <div class="sa-form-hint">The shop owner will be required to change this password on their next login.</div>
+        </div>
+      </div>
+      <div class="sa-modal-footer">
+        <button type="button" class="sa-btn sa-btn-secondary" onclick="closeSaModal('resetModal')">Cancel</button>
+        <button type="submit" class="sa-btn sa-btn-primary">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openResetModal(shopId, shopName, email) {
+    document.getElementById("resetShopTitle").textContent = shopName;
+    document.getElementById("resetShopEmail").textContent = email;
+    document.getElementById("resetForm").action = `/super-admin/shops/${shopId}/reset-password`;
+    document.getElementById("new_password_input").value = "";
+    openSaModal("resetModal");
+  }
+
+  function generateResetPassword() {
+    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById("new_password_input").value = pass;
+  }
+</script>
+{% endblock %}
