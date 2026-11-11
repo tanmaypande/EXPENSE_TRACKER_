@@ -6,9 +6,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "expense.db")
 
 def get_db_connection():
-    """Returns a thread-safe connection to the SQLite database with row factory and foreign keys enabled."""
-    conn = sqlite3.connect(DB_PATH)
+    """Returns a thread-safe connection to the SQLite database with row factory, WAL mode and foreign keys enabled."""
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 

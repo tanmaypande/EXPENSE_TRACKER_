@@ -55,6 +55,7 @@ def get_udhar_summary(business_id):
 
     return {
         "total_outstanding": round(total_outstanding, 2),
+        "total_udhar": round(total_outstanding, 2),
         "pending_customers": pending_customers,
         "collected_this_month": round(collected_this_month, 2),
         "overdue_amount": round(overdue_amount, 2),
@@ -191,20 +192,22 @@ def collect_udhar_payment(business_id, invoice_id, amount, payment_method="cash"
         """, (new_paid, new_balance, new_status, invoice_id, business_id))
 
         # 2. Record payment voucher in customer_payments
-        cur.execute("""
-        INSERT INTO customer_payments 
-        (business_id, customer_id, invoice_id, amount, payment_method, transaction_reference, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            business_id,
-            sale["customer_id"] or 0,
-            invoice_id,
-            amt,
-            payment_method.lower(),
-            transaction_ref.strip(),
-            notes.strip() or f"Udhar collection on {sale['invoice_number']}"
-        ))
-        payment_id = cur.lastrowid
+        payment_id = None
+        if sale["customer_id"]:
+            cur.execute("""
+            INSERT INTO customer_payments 
+            (business_id, customer_id, invoice_id, amount, payment_method, transaction_reference, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                business_id,
+                sale["customer_id"],
+                invoice_id,
+                amt,
+                payment_method.lower(),
+                transaction_ref.strip(),
+                notes.strip() or f"Udhar collection on {sale['invoice_number']}"
+            ))
+            payment_id = cur.lastrowid
 
         # 3. Update customer outstanding balance
         if sale["customer_id"]:

@@ -79,7 +79,13 @@ def delete(id):
         return redirect(url_for("auth.login"))
 
     biz_id = session.get("business_id")
-    delete_customer(biz_id, id)
+    try:
+        delete_customer(biz_id, id)
+        flash("Customer removed successfully.", "success")
+    except ValueError as ve:
+        flash(str(ve), "error")
+    except Exception as e:
+        flash(f"Error removing customer: {str(e)}", "error")
     return redirect(url_for("customers.index"))
 
 @customer_bp.route("/api/customers/<int:id>")

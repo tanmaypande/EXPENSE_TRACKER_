@@ -475,7 +475,9 @@
   }
 
   // 6. CHECKOUT EXECUTION
+  let isSubmittingCheckout = false;
   async function executeCheckout() {
+    if (isSubmittingCheckout) return;
     if (cart.length === 0) {
       alert("Cart is empty. Please add items before checking out.");
       return;
@@ -534,6 +536,7 @@
       }
     }
 
+    isSubmittingCheckout = true;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span>Processing Bill...</span>`;
 
@@ -581,6 +584,7 @@
     } catch (err) {
       alert(`Network error during checkout: ${err.message}`);
     } finally {
+      isSubmittingCheckout = false;
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width: 20px; height: 20px;"></i><span>Complete & Print Bill (F9)</span>`;
       if (window.lucide) window.lucide.createIcons();

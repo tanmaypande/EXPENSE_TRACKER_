@@ -55,14 +55,21 @@ def update_customer(business_id, customer_id, name, phone=None, email=None, addr
 
 def delete_customer(business_id, customer_id):
     conn = get_db_connection()
-    cur = conn.cursor()
-    # Unlink any associated sales so invoices remain historically accurate
-    cur.execute("UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
-    cur.execute("DELETE FROM customer_payments WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
-    cur.execute("DELETE FROM customers WHERE id = ? AND business_id = ?", (customer_id, business_id))
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        cur = conn.cursor()
+        c_row = cur.execute("SELECT name, outstanding_balance FROM customers WHERE id = ? AND business_id = ?", (customer_id, business_id)).fetchone()
+        if not c_row:
+            return False
+        if float(c_row["outstanding_balance"] or 0.0) > 0:
+            raise ValueError(f"Cannot delete customer '{c_row['name']}' with active outstanding Udhar balance of ₹{c_row['outstanding_balance']:.2f}. Settle all balances first.")
+        # Unlink any associated sales so invoices remain historically accurate
+        cur.execute("UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
+        cur.execute("DELETE FROM customer_payments WHERE customer_id = ? AND business_id = ?", (customer_id, business_id))
+        cur.execute("DELETE FROM customers WHERE id = ? AND business_id = ?", (customer_id, business_id))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
 
 def get_customer_by_id(customer_id, business_id):
     conn = get_db_connection()

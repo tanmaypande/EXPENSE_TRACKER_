@@ -65,26 +65,37 @@ def add_product():
         unit = request.form.get("unit", "pcs").strip() or "pcs"
         desc = request.form.get("description", "").strip()
 
-        if cat_id:
-            try: cat_id = int(cat_id)
-            except ValueError: cat_id = None
+        if not cat_id or str(cat_id).strip() in ("", "0", "None"):
+            cat_id = None
+        else:
+            try:
+                cat_id = int(cat_id)
+                if cat_id <= 0:
+                    cat_id = None
+            except (ValueError, TypeError):
+                cat_id = None
 
-        create_product(
-            business_id=biz_id,
-            name=name,
-            sku=sku,
-            barcode=barcode,
-            category_id=cat_id,
-            brand=brand,
-            purchase_price=cost_price,
-            selling_price=sell_price,
-            tax_rate=tax_rate,
-            stock_quantity=stock_qty,
-            min_stock_level=min_stock,
-            unit=unit,
-            description=desc
-        )
-        return redirect(url_for("inventory.list_products"))
+        try:
+            create_product(
+                business_id=biz_id,
+                name=name,
+                sku=sku,
+                barcode=barcode,
+                category_id=cat_id,
+                brand=brand,
+                purchase_price=cost_price,
+                selling_price=sell_price,
+                tax_rate=tax_rate,
+                stock_quantity=stock_qty,
+                min_stock_level=min_stock,
+                unit=unit,
+                description=desc
+            )
+            flash(f"Product '{name}' added successfully to inventory.", "success")
+            return redirect(url_for("inventory.list_products"))
+        except Exception as e:
+            flash(f"Error adding product: {str(e)}", "error")
+            return render_template("inventory/form.html", categories=categories, business=business, product=None)
 
     return render_template("inventory/form.html", categories=categories, business=business, product=None)
 
@@ -114,26 +125,37 @@ def edit_product(id):
         unit = request.form.get("unit", "pcs").strip() or "pcs"
         desc = request.form.get("description", "").strip()
 
-        if cat_id:
-            try: cat_id = int(cat_id)
-            except ValueError: cat_id = None
+        if not cat_id or str(cat_id).strip() in ("", "0", "None"):
+            cat_id = None
+        else:
+            try:
+                cat_id = int(cat_id)
+                if cat_id <= 0:
+                    cat_id = None
+            except (ValueError, TypeError):
+                cat_id = None
 
-        update_product(
-            product_id=id,
-            business_id=biz_id,
-            name=name,
-            sku=sku,
-            barcode=barcode,
-            category_id=cat_id,
-            brand=brand,
-            purchase_price=cost_price,
-            selling_price=sell_price,
-            tax_rate=tax_rate,
-            min_stock_level=min_stock,
-            unit=unit,
-            description=desc
-        )
-        return redirect(url_for("inventory.list_products"))
+        try:
+            update_product(
+                product_id=id,
+                business_id=biz_id,
+                name=name,
+                sku=sku,
+                barcode=barcode,
+                category_id=cat_id,
+                brand=brand,
+                purchase_price=cost_price,
+                selling_price=sell_price,
+                tax_rate=tax_rate,
+                min_stock_level=min_stock,
+                unit=unit,
+                description=desc
+            )
+            flash(f"Product '{name}' updated successfully.", "success")
+            return redirect(url_for("inventory.list_products"))
+        except Exception as e:
+            flash(f"Error updating product: {str(e)}", "error")
+            return render_template("inventory/form.html", categories=categories, business=business, product=product)
 
     return render_template("inventory/form.html", categories=categories, business=business, product=product)
 
@@ -144,7 +166,7 @@ def stock_adjustment():
 
     biz_id = session.get("business_id")
     product_id = int(request.form.get("product_id"))
-    qty = float(request.form.get("quantity", 0.0) or 0.0)
+    qty = float(request.form.get("quantity") or request.form.get("adjustment_qty") or 0.0)
     reason = request.form.get("reason", "adjustment")
     notes = request.form.get("notes", "")
 

@@ -1,3 +1,4 @@
+import datetime
 from models.database import get_db_connection
 
 BUSINESS_EXPENSE_CATEGORIES = [
@@ -39,10 +40,12 @@ def get_expenses(business_id, category=None, start_date=None, end_date=None, lim
     conn.close()
     return [dict(r) for r in rows]
 
-def create_expense(business_id, category, amount, date, description="", payment_method="cash"):
+def create_expense(business_id, category, amount, date=None, description="", payment_method="cash"):
     amt = float(amount or 0.0)
     if amt <= 0:
         raise ValueError("Expense amount must be greater than zero.")
+    if not date:
+        date = datetime.date.today().strftime("%Y-%m-%d")
 
     conn = get_db_connection()
     cur = conn.cursor()

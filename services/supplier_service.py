@@ -50,13 +50,20 @@ def update_supplier(business_id, supplier_id, name, contact_person="", phone="",
 
 def delete_supplier(business_id, supplier_id):
     conn = get_db_connection()
-    cur = conn.cursor()
-    # Unlink purchases to preserve inward stock and accounting records
-    cur.execute("UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND business_id = ?", (supplier_id, business_id))
-    cur.execute("DELETE FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id))
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        cur = conn.cursor()
+        s_row = cur.execute("SELECT name, outstanding_balance FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id)).fetchone()
+        if not s_row:
+            return False
+        if float(s_row["outstanding_balance"] or 0.0) > 0:
+            raise ValueError(f"Cannot delete supplier '{s_row['name']}' with active outstanding payable balance of ₹{s_row['outstanding_balance']:.2f}. Settle all balances first.")
+        # Unlink purchases to preserve inward stock and accounting records
+        cur.execute("UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND business_id = ?", (supplier_id, business_id))
+        cur.execute("DELETE FROM suppliers WHERE id = ? AND business_id = ?", (supplier_id, business_id))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
 
 def get_supplier_details(supplier_id, business_id):
     conn = get_db_connection()

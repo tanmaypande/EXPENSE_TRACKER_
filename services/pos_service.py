@@ -51,9 +51,24 @@ def calculate_cart_totals(items, discount_type="fixed", discount_value=0.0, disc
         subtotal += item_subtotal
         raw_item_tax += item_tax
 
+        p_name = item.get("name") or item.get("product_name")
+        if not p_name and item.get("product_id"):
+            try:
+                conn_lookup = get_db_connection()
+                p_row = conn_lookup.execute("SELECT name, sku, purchase_price FROM products WHERE id = ?", (item.get("product_id"),)).fetchone()
+                conn_lookup.close()
+                if p_row:
+                    p_name = p_row["name"]
+                    if not item.get("sku"): item["sku"] = p_row["sku"]
+                    if not item.get("purchase_price"): item["purchase_price"] = p_row["purchase_price"]
+            except Exception:
+                pass
+        if not p_name:
+            p_name = f"Product #{item.get('product_id')}" if item.get('product_id') else "Item"
+
         processed_items.append({
             "product_id": item.get("product_id"),
-            "product_name": item.get("name") or item.get("product_name"),
+            "product_name": p_name,
             "sku": item.get("sku", ""),
             "unit_price": price,
             "purchase_price": float(item.get("purchase_price", 0.0)),
@@ -68,7 +83,7 @@ def calculate_cart_totals(items, discount_type="fixed", discount_value=0.0, disc
     val = float(discount_value if discount_value is not None else (discount_amount or 0.0))
     disc_type = str(discount_type or "fixed").lower()
 
-    if disc_type == "percentage":
+    if disc_type in ("percentage", "percent", "%"):
         disc_val = max(0.0, val)
         computed_discount = round(subtotal * (disc_val / 100.0), 2)
     else:
@@ -198,14 +213,14 @@ def complete_sale(business_id, user_id, items, customer_id=None, customer_name=N
                 cost_price, itm["quantity"], itm["discount_amount"], itm["tax_rate"], itm["tax_amount"], itm["total_amount"]
             ))
 
-        # 3. Log initial payment record if amount paid > 0
-        if actual_paid > 0:
+        # 3. Log initial payment record if amount paid > 0 and customer is linked
+        if actual_paid > 0 and customer_id:
             cur.execute("""
             INSERT INTO customer_payments (business_id, customer_id, invoice_id, amount, payment_method, notes)
             VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 business_id,
-                customer_id or 0,
+                customer_id,
                 sale_id,
                 actual_paid,
                 method,

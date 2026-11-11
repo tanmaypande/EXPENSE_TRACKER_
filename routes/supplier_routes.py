@@ -104,7 +104,13 @@ def delete_supplier_route(id):
         return redirect(url_for("auth.login"))
 
     biz_id = session.get("business_id")
-    delete_supplier(biz_id, id)
+    try:
+        delete_supplier(biz_id, id)
+        flash("Supplier removed successfully.", "success")
+    except ValueError as ve:
+        flash(str(ve), "error")
+    except Exception as e:
+        flash(f"Error removing supplier: {str(e)}", "error")
     return redirect(url_for("suppliers.index"))
 
 @supplier_bp.route("/purchases")

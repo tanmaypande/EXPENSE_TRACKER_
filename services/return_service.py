@@ -113,6 +113,27 @@ def process_return(business_id, sale_id, return_items_data, refund_method="cash"
                     VALUES (?, ?, ?, ?, 'return', ?, ?)
                     """, (business_id, vi["product_id"], vi["quantity"], new_stock, sale["invoice_number"], f"Customer return on {sale['invoice_number']}"))
 
+        # If store credit / Khata adjustment selected, reduce invoice balance & customer outstanding balance
+        if refund_method.lower() in ("credit", "store_credit", "khata", "balance_adjust"):
+            refund_amt = round(total_refund, 2)
+            orig_balance = float(sale["balance_amount"] or 0.0)
+            balance_reduction = min(orig_balance, refund_amt)
+            if balance_reduction > 0:
+                new_balance = max(0.0, round(orig_balance - balance_reduction, 2))
+                new_status = "paid" if new_balance == 0.0 else ("partial" if float(sale["paid_amount"] or 0.0) > 0 else "unpaid")
+                cur.execute("""
+                UPDATE sales 
+                SET balance_amount = ?, payment_status = ? 
+                WHERE id = ? AND business_id = ?
+                """, (new_balance, new_status, sale_id, business_id))
+
+            if sale["customer_id"]:
+                cur.execute("""
+                UPDATE customers 
+                SET outstanding_balance = MAX(0.0, round(outstanding_balance - ?, 2))
+                WHERE id = ? AND business_id = ?
+                """, (refund_amt, sale["customer_id"], business_id))
+
         conn.commit()
         return return_id
     except Exception as e:
